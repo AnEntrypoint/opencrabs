@@ -2,6 +2,9 @@ import { createElement, applyDiff } from "webjsx";
 
 let menuState = { open: false, x: 0, y: 0, items: [], el: null };
 
+function onKeyDown(e) { if (e.key === "Escape") hide(); }
+function onClickOutside() { hide(); }
+
 function show(e, items, el) {
   e.preventDefault();
   e.stopPropagation();
@@ -11,10 +14,18 @@ function show(e, items, el) {
   if (y + items.length * 38 + 16 > vh) y = vh - items.length * 38 - 20;
   menuState = { open: true, x, y, items, el };
   render();
+  requestAnimationFrame(() => {
+    document.addEventListener("keydown", onKeyDown);
+    document.addEventListener("mousedown", onClickOutside);
+    document.addEventListener("contextmenu", onClickOutside);
+  });
 }
 
 function hide() {
   if (!menuState.open) return;
+  document.removeEventListener("keydown", onKeyDown);
+  document.removeEventListener("mousedown", onClickOutside);
+  document.removeEventListener("contextmenu", onClickOutside);
   menuState.open = false;
   render();
 }
@@ -24,14 +35,14 @@ function render() {
   if (!menuState.open) { applyDiff(menuState.el, createElement("div", null)); return; }
   const vdom = createElement("div", {
     style: "position:fixed;inset:0;z-index:9998",
-    onclick: hide, oncontextmenu: (e) => { e.preventDefault(); hide(); }
+    onmousedown: (e) => { if (e.target === e.currentTarget) { e.preventDefault(); hide(); } }
   },
     createElement("div", {
       class: "ui-context-menu",
       style: "left:" + menuState.x + "px;top:" + menuState.y + "px",
-      onclick: (e) => e.stopPropagation()
+      onmousedown: (e) => e.stopPropagation()
     },
-      ...menuState.items.map((item, i) => {
+      ...menuState.items.map((item) => {
         if (item.sep) return createElement("div", { class: "ui-context-menu-sep" });
         return createElement("button", {
           class: "ui-context-menu-item" + (item.danger ? " danger" : ""),
@@ -45,4 +56,4 @@ function render() {
 
 function init(el) { menuState.el = el; }
 
-export { show, hide, init, render };
+export { show, hide, init };

@@ -1,43 +1,42 @@
 import { createElement, applyDiff } from "webjsx";
-import { state, dispatch, getFilteredAgents } from "../store.js";
+import { getFilteredAgents } from "../machines.js";
 import { avatarDataUrl } from "../avatar.js";
 import { show as showCtx } from "./context-menu.js";
 
-const FILTERS = [
-  { value: "all", label: "All" },
-  { value: "running", label: "Running" },
-  { value: "approvals", label: "Approvals" },
-];
-
+const FILTERS = [{ value: "all", label: "All" }, { value: "running", label: "Running" }, { value: "approvals", label: "Approvals" }];
 const STATUS_BADGE = { idle: "ui-badge-status-idle", running: "ui-badge-status-running", error: "ui-badge-status-error" };
 const STATUS_LABEL = { idle: "Idle", running: "Running", error: "Error" };
 
 let onCreateCb = null;
-let rootEl = null;
 
-function agentContextMenu(e, agent) {
+function agentContextMenu(e, agent, actor) {
   showCtx(e, [
     { icon: "\u270F", label: "Rename", action: () => {
       const name = prompt("Rename agent:", agent.name);
-      if (name?.trim()) dispatch({ type: "updateAgent", agentId: agent.agentId, patch: { name: name.trim() } });
+      if (name?.trim()) actor.send({ type: "UPDATE_AGENT", agentId: agent.agentId, patch: { name: name.trim() } });
     }},
     { icon: "\u{1F504}", label: "Reset session", action: () => {
-      dispatch({ type: "updateAgent", agentId: agent.agentId, patch: { outputLines: [], streamText: null, thinkingTrace: null, lastResult: null, draft: "", status: "idle" } });
+      actor.send({ type: "UPDATE_AGENT", agentId: agent.agentId, patch: { outputLines: [], streamText: null, thinkingTrace: null, lastResult: null, draft: "", status: "idle" } });
+      import("../db.js").then(db => db.saveHistory(agent.agentId, []));
     }},
     { icon: "\u{1F4CB}", label: "Copy ID", action: () => navigator.clipboard.writeText(agent.agentId).catch(() => {}) },
     { sep: true },
-    { icon: "\u{1F5D1}", label: "Delete agent", danger: true, action: () => dispatch({ type: "removeAgent", agentId: agent.agentId }) },
+    { icon: "\u{1F5D1}", label: "Delete agent", danger: true, action: () => {
+      actor.send({ type: "REMOVE_AGENT", agentId: agent.agentId });
+      import("../db.js").then(db => db.deleteAgent(agent.agentId));
+    }},
   ], document.getElementById("oc-ctx"));
 }
 
-function renderAgent(agent) {
-  const selected = state.selectedAgentId === agent.agentId;
+function renderAgent(agent, actor) {
+  const ctx = actor.getSnapshot().context;
+  const selected = ctx.selectedAgentId === agent.agentId;
   const avatarSrc = avatarDataUrl(agent.avatarSeed || agent.agentId, 42);
   return createElement("button", {
     class: "ui-card" + (selected ? " ui-card-selected" : ""),
     style: "position:relative;display:flex;width:100%;align-items:center;gap:10px;overflow:hidden;padding:10px 12px;text-align:left;transition:background 150ms,box-shadow 150ms" + (!selected ? ";cursor:pointer" : ""),
-    onclick: () => dispatch({ type: "selectAgent", agentId: agent.agentId }),
-    oncontextmenu: (e) => agentContextMenu(e, agent)
+    onclick: () => actor.send({ type: "SELECT_AGENT", agentId: agent.agentId }),
+    oncontextmenu: (e) => agentContextMenu(e, agent, actor)
   },
     selected ? createElement("span", { class: "ui-card-select-indicator", style: "opacity:1" }) : null,
     createElement("img", { src: avatarSrc, width: "42", height: "42", style: "border-radius:var(--radius-small);flex-shrink:0" + (selected ? ";box-shadow:0 0 0 2px color-mix(in oklch,var(--primary) 36%,transparent)" : "") }),
@@ -52,25 +51,26 @@ function renderAgent(agent) {
   );
 }
 
-function render(el, onCreate) {
-  rootEl = el;
+function render(actor, el, onCreate) {
   if (onCreate) onCreateCb = onCreate;
-  const agents = getFilteredAgents();
-  const vdom = createElement("aside", { class: "glass-panel fade-up-delay", style: "display:flex;height:100%;width:100%;flex-direction:column;gap:10px;background:var(--sidebar);padding:12px" },
-    createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px" },
-      createElement("p", { style: "font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--foreground)" }, "Agents (" + state.agents.length + ")"),
-      createElement("button", { class: "ui-btn-primary", style: "padding:6px 12px;font-size:11px", onclick: () => onCreateCb && onCreateCb() }, "New agent")
+  const ctx = actor.getSnapshot().context;
+  const agents = getFilteredAgents(ctx);
+  const h = createElement;
+  const vdom = h("aside", { class: "glass-panel fade-up-delay", style: "display:flex;height:100%;width:100%;flex-direction:column;gap:10px;background:var(--sidebar);padding:12px" },
+    h("div", { style: "display:flex;align-items:center;justify-content:space-between;gap:8px;padding:0 4px" },
+      h("p", { style: "font-family:var(--font-mono);font-size:13px;font-weight:700;color:var(--foreground)" }, "Agents (" + ctx.agents.length + ")"),
+      h("button", { class: "ui-btn-primary", style: "padding:6px 12px;font-size:11px", onclick: () => onCreateCb && onCreateCb() }, "New agent")
     ),
-    createElement("div", { class: "ui-segment", style: "grid-template-columns:repeat(3,1fr)" },
-      ...FILTERS.map(f => createElement("button", {
-        class: "ui-segment-item", "data-active": state.focusFilter === f.value ? "true" : "false",
-        onclick: () => { dispatch({ type: "setFilter", filter: f.value }); render(el); }
+    h("div", { class: "ui-segment", style: "grid-template-columns:repeat(3,1fr)" },
+      ...FILTERS.map(f => h("button", {
+        class: "ui-segment-item", "data-active": ctx.focusFilter === f.value ? "true" : "false",
+        onclick: () => actor.send({ type: "SET_FILTER", filter: f.value })
       }, f.label))
     ),
-    createElement("div", { class: "ui-scroll", style: "flex:1;min-height:0;overflow-y:auto" },
+    h("div", { class: "ui-scroll", style: "flex:1;min-height:0;overflow-y:auto" },
       agents.length === 0
-        ? createElement("div", { style: "padding:12px;color:var(--muted-foreground);font-size:12px;text-align:center" }, "No agents available.")
-        : createElement("div", { style: "display:flex;flex-direction:column;gap:8px" }, ...agents.map(renderAgent))
+        ? h("div", { style: "padding:12px;color:var(--muted-foreground);font-size:12px;text-align:center" }, "No agents available.")
+        : h("div", { style: "display:flex;flex-direction:column;gap:8px" }, ...agents.map(a => renderAgent(a, actor)))
     )
   );
   applyDiff(el, vdom);

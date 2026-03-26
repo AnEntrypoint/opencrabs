@@ -1,73 +1,93 @@
 import { createElement, applyDiff } from "webjsx";
-import { state, dispatch, subscribe, uid } from "./store.js";
+import { createActor } from "xstate";
+import { appMachine, createAgentConfig, uid } from "./machines.js";
+import { loadSettings, loadAgents, saveSettings } from "./db.js";
+import { fetchModels } from "./llm.js";
 import { render as renderHeader } from "./components/header-bar.js";
 import { render as renderSidebar } from "./components/fleet-sidebar.js";
 import { render as renderChat } from "./components/agent-chat-panel.js";
 import { render as renderInspect } from "./components/agent-inspect-panels.js";
-import { render as renderGateway, init as initGateway } from "./components/gateway-connect.js";
+import { render as renderApiSetup, init as initApiSetup } from "./components/api-setup.js";
 import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
 import { init as initCtx } from "./components/context-menu.js";
 
-const DEMO_AGENTS = [
-  { agentId: "agent-research", name: "research-bot", sessionKey: uid(), avatarSeed: "research-bot", model: "claude-sonnet-4", sessionExecHost: "sandbox", sessionExecSecurity: "deny", sessionExecAsk: "on-miss" },
-  { agentId: "agent-deploy", name: "deploy-agent", sessionKey: uid(), avatarSeed: "deploy-agent", model: "claude-opus-4", sessionExecHost: "gateway", sessionExecSecurity: "allowlist", sessionExecAsk: "always" },
-  { agentId: "agent-data", name: "data-pipeline", sessionKey: uid(), avatarSeed: "data-pipeline", model: "claude-haiku-4", sessionExecHost: "node", sessionExecSecurity: "full", sessionExecAsk: "off" },
-];
-
+const actor = createActor(appMachine);
 let els = {};
 
 function mount() {
   const app = document.getElementById("app");
-  const vdom = createElement("div", null,
-    createElement("div", { id: "oc-header" }),
-    createElement("div", { class: "app-layout", style: "height:calc(100vh - 41px)" },
-      createElement("div", { class: "sidebar-area", id: "oc-sidebar" }),
-      createElement("div", { class: "main-area", id: "oc-main" },
-        createElement("div", { class: "chat-area", id: "oc-chat", style: "display:none" }),
-        createElement("div", { id: "oc-gateway", style: "display:none;flex:1;overflow-y:auto" })
-      ),
-      createElement("div", { class: "inspect-area", id: "oc-inspect", style: "display:none" })
-    ),
-    createElement("div", { id: "oc-modal" }),
-    createElement("div", { id: "oc-ctx" })
-  );
-  applyDiff(app, vdom);
+  const h = createElement;
+  applyDiff(app, h("div", null,
+    h("div", { id: "oc-header" }),
+    h("div", { class: "app-layout", style: "height:calc(100vh - 41px)" },
+      h("div", { class: "sidebar-area", id: "oc-sidebar" }),
+      h("div", { class: "main-area", id: "oc-main" },
+        h("div", { class: "chat-area", id: "oc-chat", style: "display:none" }),
+        h("div", { id: "oc-api-setup", style: "display:none;flex:1;overflow-y:auto" })),
+      h("div", { class: "inspect-area", id: "oc-inspect", style: "display:none" })),
+    h("div", { id: "oc-modal" }),
+    h("div", { id: "oc-ctx" })
+  ));
   els = {
     header: document.getElementById("oc-header"),
     sidebar: document.getElementById("oc-sidebar"),
-    main: document.getElementById("oc-main"),
     chat: document.getElementById("oc-chat"),
-    gateway: document.getElementById("oc-gateway"),
+    apiSetup: document.getElementById("oc-api-setup"),
     inspect: document.getElementById("oc-inspect"),
     modal: document.getElementById("oc-modal"),
   };
 }
 
 function renderAll() {
-  renderHeader(els.header);
-  renderSidebar(els.sidebar, () => openModal(els.modal));
-  if (state.showConnectionScreen && state.gatewayStatus !== "connected") {
+  const ctx = actor.getSnapshot().context;
+  renderHeader(actor, els.header);
+  renderSidebar(actor, els.sidebar, () => openModal(els.modal));
+  if (ctx.showApiSetup) {
     els.chat.style.display = "none";
-    els.gateway.style.display = "flex";
-    renderGateway(els.gateway);
+    els.apiSetup.style.display = "flex";
+    renderApiSetup(actor, els.apiSetup);
   } else {
     els.chat.style.display = "flex";
-    els.gateway.style.display = "none";
-    renderChat(els.chat);
+    els.apiSetup.style.display = "none";
+    renderChat(actor, els.chat);
   }
-  if (state.showInspectPanel) {
+  if (ctx.panel) {
     els.inspect.style.display = "block";
-    renderInspect(els.inspect);
+    renderInspect(actor, els.inspect);
   } else {
     els.inspect.style.display = "none";
   }
-  renderModal(els.modal);
+  renderModal(actor, els.modal);
 }
 
-document.documentElement.classList.toggle("dark", state.theme === "dark");
+async function boot() {
+  const settings = await loadSettings();
+  const agents = await loadAgents();
+  actor.send({ type: "SET_SETTINGS", settings });
+  document.documentElement.classList.toggle("dark", settings.theme !== "light");
+
+  if (agents.length > 0) {
+    actor.send({ type: "HYDRATE_AGENTS", agents });
+    if (settings.anthropicKey) actor.send({ type: "SHOW_API_SETUP", show: false });
+  } else {
+    const defaults = [
+      createAgentConfig({ name: "research-bot", avatarSeed: "research-bot", model: settings.defaultModel }),
+      createAgentConfig({ name: "deploy-agent", avatarSeed: "deploy-agent", model: settings.defaultModel }),
+      createAgentConfig({ name: "data-pipeline", avatarSeed: "data-pipeline", model: settings.defaultModel }),
+    ];
+    actor.send({ type: "HYDRATE_AGENTS", agents: defaults });
+  }
+
+  if (settings.anthropicKey || settings.openaiKey) {
+    actor.send({ type: "SET_MODELS_LOADING" });
+    const models = await fetchModels(settings.anthropicKey, settings.openaiKey);
+    actor.send({ type: "SET_MODELS", models });
+  }
+}
+
 mount();
 initCtx(document.getElementById("oc-ctx"));
-dispatch({ type: "hydrateAgents", agents: DEMO_AGENTS });
-initGateway();
-subscribe(renderAll);
-renderAll();
+actor.subscribe(renderAll);
+actor.start();
+initApiSetup(actor);
+boot().then(renderAll);
