@@ -39,8 +39,8 @@ function render(actor, el) {
   const h = createElement;
   const vdom = h("div", { style: "max-width:640px;margin:0 auto;display:flex;flex-direction:column;gap:16px;padding:32px 16px;overflow-y:auto;flex:1" },
     h("div", { style: "text-align:center;margin-bottom:8px" },
-      h("div", { style: "font-size:20px;font-weight:700;color:var(--foreground)" }, "\u{1F980} OpenClaw Studio"),
-      h("p", { style: "font-size:13px;color:var(--muted-foreground);margin-top:6px" }, "Browser-native AI agent platform. Bring your own API key.")
+      h("div", { style: "font-size:20px;font-weight:700;color:var(--foreground)" }, "\u{1F980} OpenCrabs"),
+      h("p", { style: "font-size:13px;color:var(--muted-foreground);margin-top:6px" }, "Browser-native AI agent platform with embedded browser. Bring your own API key.")
     ),
     h("div", { class: "ui-card", style: "padding:20px" },
       h("div", { style: "font-family:var(--font-mono);font-size:10px;font-weight:600;letter-spacing:0.06em;color:var(--muted-foreground);margin-bottom:12px" }, "API KEYS"),

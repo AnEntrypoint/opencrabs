@@ -1,4 +1,4 @@
-const DB_NAME = "openclaw";
+const DB_NAME = "opencrabs";
 const DB_VERSION = 2;
 let dbInstance = null;
 
