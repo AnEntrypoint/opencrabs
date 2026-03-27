@@ -4,6 +4,7 @@ import { iconHtml } from "../icons.js";
 import { getAgentFile, setAgentFile, saveAgent } from "../db.js";
 import { startJob, stopJob, getJobStatus } from "../cron.js";
 import { runAgent } from "../agent-runner.js";
+import { isConnected as companionConnected, acpSessionNew, acpSessionsList, acpPrompt, acpSessionClose } from "../companion-client.js";
 
 const EXEC_HOSTS = ["browser"];
 const SECURITY_LEVELS = ["deny", "allowlist", "full"];
@@ -86,7 +87,19 @@ async function renderBrain(actor, el) {
         const sched = document.getElementById("cron-input-" + agent.agentId)?.value;
         const msg = document.getElementById("cron-msg-" + agent.agentId)?.value;
         if (sched && msg) startJob(agent.agentId + "-cron", sched, () => runAgent(actor, agent.agentId, msg));
-      }}, "Add"))
+      }}, "Add")),
+    h("div", { style: "font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted-foreground);letter-spacing:0.05em;margin-top:4px" }, "CLI AGENTS (ACP)"),
+    companionConnected()
+      ? h("div", { style: "display:flex;flex-direction:column;gap:6px" },
+          h("div", { style: "display:flex;gap:6px" },
+            h("select", { class: "ui-input", style: "flex:1;font-size:12px;padding:6px 8px", id: "acp-agent-" + agent.agentId },
+              h("option", { value: "claude" }, "Claude Code"), h("option", { value: "codex" }, "Codex"), h("option", { value: "openclaw" }, "OpenClaw")),
+            h("button", { class: "ui-btn-primary", style: "font-size:11px;white-space:nowrap", onclick: async () => {
+              const sel = document.getElementById("acp-agent-" + agent.agentId);
+              if (sel) { const r = await acpSessionNew(sel.value, undefined, agent.name); actor.send({ type: "UPDATE_AGENT", agentId: agent.agentId, patch: { acpSessionId: r.id } }); renderBrain(actor, el); }
+            }}, "New Session")),
+          h("button", { class: "ui-btn-secondary", style: "width:100%;font-size:11px", onclick: async () => { const sessions = await acpSessionsList(); alert(sessions.length ? sessions.map(s => s.id + " [" + s.agent + "] " + s.status).join("\n") : "No active sessions"); }}, "List Sessions"))
+      : h("div", { class: "ui-card", style: "padding:12px;font-size:12px;color:var(--muted-foreground)" }, "Start companion CLI to use CLI coding agents: node companion/server.js")
   );
   applyDiff(el, vdom);
 }

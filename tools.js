@@ -1,6 +1,6 @@
 import { getAgentFile, setAgentFile } from "./db.js";
 import { navigate, navigateProxy, snapshot, click, fill, evalJs, getText, getUrl } from "./browser-tools.js";
-import { isConnected, shellExec, fsRead, fsWrite, fsList, gitStatus, gitLog, gitDiff } from "./companion-client.js";
+import { isConnected, shellExec, fsRead, fsWrite, fsList, gitStatus, gitLog, gitDiff, acpExec, acpPrompt, acpSessionNew, acpSessionsList } from "./companion-client.js";
 
 const TOOL_DEFS = [
   { name: "read_file", description: "Read a file from the agent's virtual filesystem", input_schema: { type: "object", properties: { path: { type: "string", description: "File path to read" } }, required: ["path"] } },
@@ -24,6 +24,8 @@ const TOOL_DEFS = [
   { name: "git_status", description: "Get git status of the working directory (requires companion CLI)", input_schema: { type: "object", properties: {} } },
   { name: "git_log", description: "Get recent git log (requires companion CLI)", input_schema: { type: "object", properties: {} } },
   { name: "git_diff", description: "Get git diff (requires companion CLI)", input_schema: { type: "object", properties: {} } },
+  { name: "acp_exec", description: "Execute a one-shot coding task using a CLI agent (Claude Code, Codex, etc). The agent runs on the companion CLI with full filesystem and shell access. Use for complex coding tasks.", input_schema: { type: "object", properties: { agent: { type: "string", description: "Agent to use: claude, codex, openclaw, or custom command", enum: ["claude", "codex", "openclaw"] }, prompt: { type: "string", description: "The coding task to execute" } }, required: ["prompt"] } },
+  { name: "acp_sessions", description: "List active ACP agent sessions on the companion CLI", input_schema: { type: "object", properties: {} } },
 ];
 
 function getToolDefs(enabledTools) {
@@ -55,6 +57,8 @@ async function executeTool(agentId, name, input) {
       case "git_status": { if (!isConnected()) return "Companion CLI not running."; const r = await gitStatus(); return r.stdout || "(clean)"; }
       case "git_log": { if (!isConnected()) return "Companion CLI not running."; const r = await gitLog(); return r.stdout; }
       case "git_diff": { if (!isConnected()) return "Companion CLI not running."; const r = await gitDiff(); return r.stdout || "(no changes)"; }
+      case "acp_exec": { if (!isConnected()) return "Companion CLI not running. Start with: node companion/server.js"; try { const r = await acpExec(input.agent || "claude", input.prompt); return r.error ? "ACP Error: " + r.error : JSON.stringify(r.result || r.events?.slice(-5), null, 2).slice(0, 4000); } catch (e) { return "ACP Error: " + e.message; } }
+      case "acp_sessions": { if (!isConnected()) return "Companion CLI not running."; const r = await acpSessionsList(); return r.length ? r.map(s => s.id + " [" + s.agent + "] " + s.status).join("\n") : "No active ACP sessions."; }
       default: return "Unknown tool: " + name;
     }
   } catch (e) { return "Tool error: " + e.message; }
