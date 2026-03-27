@@ -1,7 +1,7 @@
 {
   "name": "opencrabs-companion",
-  "version": "1.0.0",
-  "description": "OpenCrabs companion CLI — provides shell, filesystem, and git access to the browser app",
+  "version": "1.2.0",
+  "description": "OpenCrabs companion CLI — shell, filesystem, git, and ACP agent orchestration",
   "main": "server.js",
   "bin": {
     "opencrabs-companion": "./server.js"
@@ -10,6 +10,7 @@
     "start": "node server.js"
   },
   "dependencies": {
-    "ws": "^8.0.0"
+    "ws": "^8.0.0",
+    "@agentclientprotocol/sdk": "^0.2.0"
   }
 }

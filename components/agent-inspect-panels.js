@@ -13,6 +13,8 @@ const INTELLIGENCE_MODES = [
   { id: "acp:claude", name: "ACP: Claude Code" },
   { id: "acp:codex", name: "ACP: Codex" },
   { id: "acp:openclaw", name: "ACP: OpenClaw" },
+  { id: "acp:opencode", name: "ACP: OpenCode" },
+  { id: "acp:kilocode", name: "ACP: Kilo Code" },
 ];
 
 function renderSwitch(label, value, onChange) {
