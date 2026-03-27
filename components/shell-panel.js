@@ -101,11 +101,10 @@ export function mount(el, actor) {
     const link = document.createElement('link')
     link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
     document.head.appendChild(link)
-    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
+    const term = new Terminal({ cols: 80, rows: 24, cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(termEl)
-    fit.fit()
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
@@ -114,9 +113,7 @@ export function mount(el, actor) {
     const shell = await spawnShell(data => term.write(data))
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
     const writer = shell.input.getWriter()
-    const enc = new TextEncoder()
-    term.onData(data => writer.write(enc.encode(data)))
-    fit.fit()
+    term.onData(data => writer.write(data))
   }
 
   el.querySelectorAll('.sh-tab').forEach(btn => {

@@ -95,7 +95,7 @@ export function wcReady() { return _status === 'ready' }
 export async function spawnShell(onData) {
   if (!wc) return null
   try {
-    const proc = await wc.spawn('sh', [], {
+    const proc = await wc.spawn('jsh', [], {
       terminal: { cols: 80, rows: 24 },
       env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', TERM: 'xterm-color' }
     })
