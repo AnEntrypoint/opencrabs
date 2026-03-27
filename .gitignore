@@ -1,3 +1,5 @@
 .gm-stop-verified
-
 .code-search/
+node_modules/
+*.png
+.prd

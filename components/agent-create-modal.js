@@ -55,7 +55,7 @@ function renderDOM() {
     + '<div style="display:grid;justify-items:center;gap:8px;padding-top:12px">'
     + '<div style="font-family:var(--font-mono);font-size:11px;font-weight:600;color:var(--muted-foreground)">Choose avatar</div>'
     + '<img src="' + avatarSrc + '" width="64" height="64" style="border-radius:var(--radius-small)">'
-    + '<button class="ui-btn-secondary" style="font-size:12px" id="modal-shuffle">↻ Shuffle</button></div></div>'
+    + '<button class="ui-btn-secondary" style="font-size:12px;display:inline-flex;align-items:center;gap:6px" id="modal-shuffle">' + iconHtml("shuffle", 14) + ' Shuffle</button></div></div>'
     + '<div style="display:flex;align-items:center;justify-content:space-between;box-shadow:0 -1px 0 color-mix(in oklch,var(--surface-3) 45%,transparent);padding:16px 24px">'
     + '<div style="font-size:11px;color:var(--muted-foreground)">Authority can be configured after launch.</div>'
     + '<button class="ui-btn-primary" style="font-size:11px" id="modal-launch">Launch agent</button></div>';
