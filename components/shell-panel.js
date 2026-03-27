@@ -32,13 +32,13 @@ function getCompanion() {
 export function mount(el, actor) {
   el.innerHTML = `
 <style>
-.sh-wrap{display:flex;flex-direction:column;height:100%}
+.sh-wrap{display:flex;flex-direction:column;height:100%;width:100%}
 .sh-tabs{display:flex;gap:2px;padding:0 16px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
 .sh-tab{padding:8px 14px;font-size:12px;font-weight:500;background:none;border:none;border-bottom:2px solid transparent;color:var(--muted-foreground);cursor:pointer}
 .sh-tab:hover{color:var(--foreground)}.sh-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
-.sh-panel{display:none;flex:1;overflow:hidden;flex-direction:column}.sh-panel.active{display:flex}
-#sh-output,#sh-terminal{flex:1;overflow-y:auto;padding:12px 16px;font-family:var(--font-mono);font-size:13px;line-height:1.6}
-#sh-terminal{background:#0d0f14;color:#a8ff78;padding:0!important}
+.sh-panel{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.sh-panel.active{display:flex}
+#sh-output{flex:1;overflow-y:auto;padding:12px 16px;font-family:var(--font-mono);font-size:13px;line-height:1.6}
+#sh-terminal{flex:1;min-height:0;width:100%;background:#0d0f14}
 .sh-line{white-space:pre-wrap;word-break:break-word;padding:1px 0}
 .sh-line-user{color:var(--primary)}.sh-line-assistant{color:var(--foreground)}.sh-line-err{color:var(--destructive)}
 .sh-line-info{color:var(--muted-foreground)}.sh-line-tool{color:oklch(0.7 0.15 80)}.sh-line-raw{color:var(--muted-foreground);font-size:11px}
@@ -48,7 +48,7 @@ export function mount(el, actor) {
 .sh-ghost{background:var(--muted)!important;color:var(--muted-foreground)!important}
 .sh-browser-bar{display:flex;gap:8px;padding:8px 16px;background:var(--card);border-bottom:1px solid var(--border);flex-shrink:0}
 .sh-browser-bar input{flex:1;background:var(--input);border:1px solid var(--border);color:var(--foreground);border-radius:6px;padding:6px 10px;font-size:13px}
-#sh-frame{flex:1;border:none;background:#fff}
+#sh-frame{flex:1;min-height:0;border:none;width:100%;background:#fff}
 </style>
 <div class="sh-wrap">
   <div class="sh-tabs">
@@ -88,8 +88,11 @@ export function mount(el, actor) {
 
   const $ = id => el.querySelector('#'+id)
   const appendLine = (text, kind='raw') => { const o=$('sh-output'); if(!o)return; const d=document.createElement('div'); d.className='sh-line sh-line-'+(kind||'raw'); d.textContent=stripAnsi(text); o.appendChild(d); o.scrollTop=o.scrollHeight }
-  const appendTerm = (text, kind) => { const o=$('sh-terminal'); if(!o)return; const d=document.createElement('div'); d.className='sh-line sh-line-'+(kind||'raw'); d.textContent=stripAnsi(text); o.appendChild(d); o.scrollTop=o.scrollHeight }
   const clearOutput = () => { $('sh-output').innerHTML='' }
+
+  let _term = null
+  let _termQueue = []
+  const appendTerm = (text) => { if (_term) _term.writeln(stripAnsi(text)); else _termQueue.push(text) }
 
   let _xtermInited = false
   async function initXterm() {
@@ -101,10 +104,12 @@ export function mount(el, actor) {
     const link = document.createElement('link')
     link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
     document.head.appendChild(link)
-    const term = new Terminal({ cols: 80, rows: 24, cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
+    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(termEl)
+    // fit after element is visible in DOM
+    requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.writeln(t)); _termQueue = [] })
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
@@ -117,15 +122,16 @@ export function mount(el, actor) {
     term.onData(data => writer.write(data))
   }
 
-  el.querySelectorAll('.sh-tab').forEach(btn => {
-    btn.onclick = () => {
-      el.querySelectorAll('.sh-tab').forEach(b=>b.classList.remove('active'))
-      el.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'))
-      btn.classList.add('active')
-      el.querySelector('#'+btn.dataset.tab).classList.add('active')
-      if (btn.dataset.tab === 'sh-term') initXterm()
-    }
-  })
+  function switchTab(tabId) {
+    el.querySelectorAll('.sh-tab').forEach(b => b.classList.toggle('active', b.dataset.tab === tabId))
+    el.querySelectorAll('.sh-panel').forEach(p => p.classList.toggle('active', p.id === tabId))
+    if (tabId === 'sh-term') initXterm()
+    actor?.send({ type: 'SET_SHELL_TAB', tab: tabId.replace('sh-', '') })
+  }
+
+  el.querySelectorAll('.sh-tab').forEach(btn => { btn.onclick = () => switchTab(btn.dataset.tab) })
+  const initialTab = 'sh-' + (actor?.getSnapshot().context.shellTab || 'shell')
+  switchTab(initialTab)
 
   registerSW()
   const companion = getCompanion()
