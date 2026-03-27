@@ -6,6 +6,9 @@
 <title>OpenCrabs</title>
 <link rel="icon" href="favicon.svg" type="image/svg+xml">
 <link rel="stylesheet" href="styles.css">
+<script>
+if ('serviceWorker' in navigator) navigator.serviceWorker.register('/bridge-sw.js', { scope: '/' });
+</script>
 <script type="importmap">
 {"imports":{"webjsx":"https://cdn.jsdelivr.net/npm/webjsx@0.0.42/dist/index.js","webjsx/jsx-runtime":"https://cdn.jsdelivr.net/npm/webjsx@0.0.42/dist/jsx-runtime.js","xstate":"https://cdn.jsdelivr.net/npm/xstate/+esm"}}
 </script>

@@ -4,7 +4,13 @@ const BRIDGE_CONFIG_KEY = 'bridge_config'
 let config = { anthropicApiKey: '', openaiApiKey: '', openrouterApiKey: '' }
 
 self.addEventListener('install', () => self.skipWaiting())
-self.addEventListener('activate', e => e.waitUntil(self.clients.claim()))
+self.addEventListener('activate', e => e.waitUntil(
+  self.clients.claim().then(() =>
+    self.clients.matchAll({ type: 'window' }).then(clients =>
+      clients.forEach(c => { if (!new URL(c.url).searchParams.has('coi')) c.navigate(c.url + (c.url.includes('?') ? '&' : '?') + 'coi=1') })
+    )
+  )
+))
 
 self.addEventListener('message', (e) => {
   if (e.data?.type === 'BRIDGE_CONFIG') config = { ...config, ...e.data.config }
@@ -111,10 +117,21 @@ async function handleMessages(req) {
   return new Response(readable, { headers: { 'Content-Type': 'text/event-stream', 'Cache-Control': 'no-cache', 'Access-Control-Allow-Origin': '*' } })
 }
 
+function withCoi(response) {
+  if (!response || response.status === 0) return response
+  const h = new Headers(response.headers)
+  h.set('Cross-Origin-Opener-Policy', 'same-origin')
+  h.set('Cross-Origin-Embedder-Policy', 'require-corp')
+  h.set('Cross-Origin-Resource-Policy', 'cross-origin')
+  return new Response(response.body, { status: response.status, statusText: response.statusText, headers: h })
+}
+
 self.addEventListener('fetch', (e) => {
   const url = new URL(e.request.url)
   if (url.pathname === '/v1/messages') {
     if (e.request.method === 'OPTIONS') { e.respondWith(new Response(null, { status: 204, headers: { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*', 'Access-Control-Allow-Methods': '*' } })); return }
     if (e.request.method === 'POST') { e.respondWith(handleMessages(e.request).catch(err => new Response(JSON.stringify({ error: { type: 'api_error', message: err.message } }), { status: 500, headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' } }))); return }
   }
+  if (e.request.cache === 'only-if-cached' && e.request.mode !== 'same-origin') return
+  e.respondWith(fetch(e.request).then(withCoi).catch(() => fetch(e.request)))
 })
