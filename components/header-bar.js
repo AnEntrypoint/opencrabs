@@ -15,6 +15,10 @@ function render(actor, el) {
       h("p", { style: "font-size:14px;font-weight:600;color:var(--foreground);letter-spacing:0.01em" }, "\u{1F980} OpenCrabs"),
       h("div", { style: "display:flex;align-items:center;justify-content:flex-end;gap:6px" },
         h("span", { class: "ui-chip " + (hasKey ? "ui-badge-status-connected" : "ui-badge-status-disconnected"), style: "font-size:9px" }, hasKey ? "API Ready" : "No API Key"),
+        h("span", { id: "sh-companion-dot", class: "ui-chip ui-badge-status-disconnected", style: "font-size:9px" }, "companion"),
+        h("span", { id: "sh-wc-dot", class: "ui-chip ui-badge-status-disconnected", style: "font-size:9px" }, "wc"),
+        h("span", { id: "sh-ext-dot", class: "ui-chip ui-badge-status-disconnected", style: "font-size:9px" }, "ext"),
+        h("button", { class: "ui-btn-icon", style: "font-size:11px;padding:4px 8px", onclick: () => { actor.send({ type: "SHOW_SHELL", show: !ctx.showShell }) } }, ctx.showShell ? "Chat" : "Shell"),
         companionConnected() ? h("span", { class: "ui-chip ui-badge-status-running", style: "font-size:9px;display:inline-flex;align-items:center;gap:4px" }, I("terminal", 10), "CLI") : null,
         h("button", { class: "ui-btn-icon", onclick: () => {
           actor.send({ type: "SET_THEME", theme: ctx.theme === "dark" ? "light" : "dark" });

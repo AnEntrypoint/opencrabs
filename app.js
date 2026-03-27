@@ -10,6 +10,7 @@ import { render as renderInspect } from "./components/agent-inspect-panels.js";
 import { render as renderApiSetup, init as initApiSetup } from "./components/api-setup.js";
 import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
 import { init as initCtx } from "./components/context-menu.js";
+import { mount as mountShell } from "./components/shell-panel.js";
 
 const actor = createActor(appMachine);
 let els = {};
@@ -23,6 +24,7 @@ function mount() {
       h("div", { class: "sidebar-area", id: "oc-sidebar" }),
       h("div", { class: "main-area", id: "oc-main" },
         h("div", { class: "chat-area", id: "oc-chat", style: "display:none" }),
+        h("div", { id: "oc-shell", style: "display:none;flex:1;overflow:hidden" }),
         h("div", { id: "oc-api-setup", style: "display:none;flex:1;overflow-y:auto" })),
       h("div", { class: "inspect-area", id: "oc-inspect", style: "display:none" })),
     h("div", { id: "oc-modal" }),
@@ -35,6 +37,7 @@ function mount() {
     apiSetup: document.getElementById("oc-api-setup"),
     inspect: document.getElementById("oc-inspect"),
     modal: document.getElementById("oc-modal"),
+    shell: document.getElementById("oc-shell"),
   };
 }
 
@@ -42,13 +45,20 @@ function renderAll() {
   const ctx = actor.getSnapshot().context;
   renderHeader(actor, els.header);
   renderSidebar(actor, els.sidebar, () => openModal(actor, els.modal));
-  if (ctx.showApiSetup) {
+  if (ctx.showShell) {
+    els.chat.style.display = "none";
+    els.apiSetup.style.display = "none";
+    els.shell.style.display = "flex";
+    if (!els.shell._mounted) { mountShell(els.shell, actor); els.shell._mounted = true; }
+  } else if (ctx.showApiSetup) {
     els.chat.style.display = "none";
     els.apiSetup.style.display = "flex";
+    els.shell.style.display = "none";
     renderApiSetup(actor, els.apiSetup);
   } else {
     els.chat.style.display = "flex";
     els.apiSetup.style.display = "none";
+    els.shell.style.display = "none";
     renderChat(actor, els.chat);
   }
   if (ctx.panel) {

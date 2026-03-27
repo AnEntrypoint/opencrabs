@@ -1,0 +1,9 @@
+{
+  "name": "opencrabs",
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "start": "node bin/serve.js",
+    "serve": "node bin/serve.js"
+  }
+}
