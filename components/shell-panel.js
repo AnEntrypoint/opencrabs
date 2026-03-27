@@ -108,7 +108,8 @@ export function mount(el, actor) {
     new ResizeObserver(() => fit.fit()).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
-      await new Promise(resolve => { const unsub = onWcStatus(s => { if (s === 'ready') { unsub(); resolve() } }) })
+      const ok = await new Promise(resolve => { const unsub = onWcStatus(s => { if (s === 'ready') { unsub(); resolve(true) } else if (s === 'unavailable') { unsub(); resolve(false) } }) })
+      if (!ok) { term.writeln('\x1b[31mWebContainer unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
     const shell = await spawnShell(data => term.write(data))
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
