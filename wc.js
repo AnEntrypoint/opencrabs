@@ -56,3 +56,38 @@ function registerCdpRelay(wcInstance) {
   })
   wcInstance.on('port', (port, type) => { if (port === 3001 && type === 'close') _cdpRelayUrl = null })
 }
+
+export async function wcExec(command, cwd) {
+  if (!wc) return null
+  try {
+    let out = '', err = ''
+    const proc = await wc.spawn('sh', ['-c', command], { cwd: cwd || '/', env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin' } })
+    proc.output.pipeTo(new WritableStream({ write(d) { out += d } }))
+    const code = await proc.exit
+    return out + (err ? '\nSTDERR: ' + err : '') + '\n[exit ' + code + ']'
+  } catch(e) { return 'Error: ' + e.message }
+}
+
+export async function wcFsRead(path) {
+  if (!wc) return null
+  try { return await wc.fs.readFile(path, 'utf8') } catch(e) { return null }
+}
+
+export async function wcFsWrite(path, content) {
+  if (!wc) return null
+  try { await wc.fs.writeFile(path, content); return true } catch(e) { return null }
+}
+
+export async function wcFsList(path) {
+  if (!wc) return null
+  try {
+    const entries = await wc.fs.readdir(path || '/', { withFileTypes: true })
+    return entries.map(e => ({ name: e.name, type: e.isDirectory() ? 'dir' : 'file' }))
+  } catch(e) { return null }
+}
+
+export async function wcGit(args, cwd) {
+  return wcExec('git ' + args, cwd)
+}
+
+export function wcReady() { return _status === 'ready' }

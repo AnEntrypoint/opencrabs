@@ -1,6 +1,7 @@
 import { getAgentFile, setAgentFile } from "./db.js";
 import { navigate, navigateProxy, snapshot, click, fill, evalJs, getText, getUrl } from "./browser-tools.js";
 import { isConnected, shellExec, fsRead, fsWrite, fsList, gitStatus, gitLog, gitDiff, acpExec, acpPrompt, acpSessionNew, acpSessionsList } from "./companion-client.js";
+import { wcReady, wcExec, wcFsRead, wcFsWrite, wcFsList, wcGit } from "./wc.js";
 
 const TOOL_DEFS = [
   { name: "read_file", description: "Read a file from the agent's virtual filesystem", input_schema: { type: "object", properties: { path: { type: "string", description: "File path to read" } }, required: ["path"] } },
@@ -17,13 +18,13 @@ const TOOL_DEFS = [
   { name: "browser_eval", description: "Execute JavaScript in the embedded browser iframe context and return the result", input_schema: { type: "object", properties: { code: { type: "string", description: "JavaScript code to evaluate" } }, required: ["code"] } },
   { name: "browser_get_text", description: "Get text content of an element in the embedded browser. Omit selector for full page text.", input_schema: { type: "object", properties: { selector: { type: "string", description: "CSS selector (optional, defaults to body)" } } } },
   { name: "browser_get_url", description: "Get the current URL of the embedded browser", input_schema: { type: "object", properties: {} } },
-  { name: "shell_exec", description: "Execute a shell command on the local machine (requires companion CLI running)", input_schema: { type: "object", properties: { command: { type: "string", description: "Shell command to execute" }, cwd: { type: "string", description: "Working directory (optional)" } }, required: ["command"] } },
-  { name: "real_fs_read", description: "Read a file from the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "Absolute or relative file path" } }, required: ["path"] } },
-  { name: "real_fs_write", description: "Write a file to the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "File path" }, content: { type: "string", description: "Content to write" } }, required: ["path", "content"] } },
-  { name: "real_fs_list", description: "List files in a directory on the real filesystem (requires companion CLI)", input_schema: { type: "object", properties: { path: { type: "string", description: "Directory path (defaults to CWD)" } } } },
-  { name: "git_status", description: "Get git status of the working directory (requires companion CLI)", input_schema: { type: "object", properties: {} } },
-  { name: "git_log", description: "Get recent git log (requires companion CLI)", input_schema: { type: "object", properties: {} } },
-  { name: "git_diff", description: "Get git diff (requires companion CLI)", input_schema: { type: "object", properties: {} } },
+  { name: "shell_exec", description: "Execute a shell command. Runs in WebContainer (in-browser) when available, falls back to companion CLI.", input_schema: { type: "object", properties: { command: { type: "string", description: "Shell command to execute" }, cwd: { type: "string", description: "Working directory (optional)" } }, required: ["command"] } },
+  { name: "real_fs_read", description: "Read a file. Uses WebContainer filesystem when available, falls back to companion CLI.", input_schema: { type: "object", properties: { path: { type: "string", description: "Absolute or relative file path" } }, required: ["path"] } },
+  { name: "real_fs_write", description: "Write a file. Uses WebContainer filesystem when available, falls back to companion CLI.", input_schema: { type: "object", properties: { path: { type: "string", description: "File path" }, content: { type: "string", description: "Content to write" } }, required: ["path", "content"] } },
+  { name: "real_fs_list", description: "List files in a directory. Uses WebContainer filesystem when available, falls back to companion CLI.", input_schema: { type: "object", properties: { path: { type: "string", description: "Directory path (defaults to CWD)" } } } },
+  { name: "git_status", description: "Get git status. Runs in WebContainer when available, falls back to companion CLI.", input_schema: { type: "object", properties: {} } },
+  { name: "git_log", description: "Get recent git log. Runs in WebContainer when available, falls back to companion CLI.", input_schema: { type: "object", properties: {} } },
+  { name: "git_diff", description: "Get git diff. Runs in WebContainer when available, falls back to companion CLI.", input_schema: { type: "object", properties: {} } },
   { name: "acp_exec", description: "Execute a one-shot coding task using a CLI agent (Claude Code, Codex, etc). The agent runs on the companion CLI with full filesystem and shell access. Use for complex coding tasks.", input_schema: { type: "object", properties: { agent: { type: "string", description: "Agent to use: claude, codex, openclaw, or custom command", enum: ["claude", "codex", "openclaw"] }, prompt: { type: "string", description: "The coding task to execute" } }, required: ["prompt"] } },
   { name: "acp_sessions", description: "List active ACP agent sessions on the companion CLI", input_schema: { type: "object", properties: {} } },
 ];
@@ -50,13 +51,13 @@ async function executeTool(agentId, name, input) {
       case "browser_eval": return evalJs(input.code);
       case "browser_get_text": return getText(input.selector);
       case "browser_get_url": return getUrl();
-      case "shell_exec": { if (!isConnected()) return "Companion CLI not running. Start it with: npx opencrabs-companion"; const r = await shellExec(input.command, input.cwd); return (r.stdout || "") + (r.stderr ? "\nSTDERR: " + r.stderr : "") + "\n[exit " + r.exitCode + "]"; }
-      case "real_fs_read": { if (!isConnected()) return "Companion CLI not running."; const r = await fsRead(input.path); return r.content; }
-      case "real_fs_write": { if (!isConnected()) return "Companion CLI not running."; await fsWrite(input.path, input.content); return "Written " + input.content.length + " chars to " + input.path; }
-      case "real_fs_list": { if (!isConnected()) return "Companion CLI not running."; const r = await fsList(input.path); return r.map(e => (e.type === "dir" ? "📁 " : "📄 ") + e.name).join("\n"); }
-      case "git_status": { if (!isConnected()) return "Companion CLI not running."; const r = await gitStatus(); return r.stdout || "(clean)"; }
-      case "git_log": { if (!isConnected()) return "Companion CLI not running."; const r = await gitLog(); return r.stdout; }
-      case "git_diff": { if (!isConnected()) return "Companion CLI not running."; const r = await gitDiff(); return r.stdout || "(no changes)"; }
+      case "shell_exec": { if (wcReady()) return await wcExec(input.command, input.cwd); if (!isConnected()) return "No execution environment available. WebContainer unavailable and companion offline."; const r = await shellExec(input.command, input.cwd); return (r.stdout || "") + (r.stderr ? "\nSTDERR: " + r.stderr : "") + "\n[exit " + r.exitCode + "]"; }
+      case "real_fs_read": { if (wcReady()) { const c = await wcFsRead(input.path); return c !== null ? c : "File not found: " + input.path; } if (!isConnected()) return "No execution environment available."; const r = await fsRead(input.path); return r.content; }
+      case "real_fs_write": { if (wcReady()) { const ok = await wcFsWrite(input.path, input.content); return ok ? "Written " + input.content.length + " chars to " + input.path : "Write failed: " + input.path; } if (!isConnected()) return "No execution environment available."; await fsWrite(input.path, input.content); return "Written " + input.content.length + " chars to " + input.path; }
+      case "real_fs_list": { if (wcReady()) { const entries = await wcFsList(input.path); return entries ? entries.map(e => (e.type === "dir" ? "📁 " : "📄 ") + e.name).join("\n") : "Directory not found: " + input.path; } if (!isConnected()) return "No execution environment available."; const r = await fsList(input.path); return r.map(e => (e.type === "dir" ? "📁 " : "📄 ") + e.name).join("\n"); }
+      case "git_status": { if (wcReady()) return await wcGit("status", input.cwd); if (!isConnected()) return "No execution environment available."; const r = await gitStatus(); return r.stdout || "(clean)"; }
+      case "git_log": { if (wcReady()) return await wcGit("log --oneline -20", input.cwd); if (!isConnected()) return "No execution environment available."; const r = await gitLog(); return r.stdout; }
+      case "git_diff": { if (wcReady()) return await wcGit("diff", input.cwd); if (!isConnected()) return "No execution environment available."; const r = await gitDiff(); return r.stdout || "(no changes)"; }
       case "acp_exec": { if (!isConnected()) return "Companion CLI not running. Start with: node companion/server.js"; try { const r = await acpExec(input.agent || "claude", input.prompt); return r.error ? "ACP Error: " + r.error : JSON.stringify(r.result || r.events?.slice(-5), null, 2).slice(0, 4000); } catch (e) { return "ACP Error: " + e.message; } }
       case "acp_sessions": { if (!isConnected()) return "Companion CLI not running."; const r = await acpSessionsList(); return r.length ? r.map(s => s.id + " [" + s.agent + "] " + s.status).join("\n") : "No active ACP sessions."; }
       default: return "Unknown tool: " + name;
