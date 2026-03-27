@@ -2,6 +2,7 @@ import { streamAnthropic, streamOpenAI, isAnthropicModel } from "./llm.js";
 import { getToolDefs, executeTool, needsApproval } from "./tools.js";
 import { getAgentFile, getHistory, saveHistory } from "./db.js";
 import { uid } from "./machines.js";
+import { isConnected as companionUp, acpSessionNew, acpPrompt as acpSend, acpSubscribe } from "./companion-client.js";
 
 const MAX_TOOL_LOOPS = 10;
 const activeControllers = new Map();
@@ -10,6 +11,8 @@ async function runAgent(actor, agentId, userMessage) {
   const ctx = actor.getSnapshot().context;
   const agent = ctx.agents.find(a => a.agentId === agentId);
   if (!agent) return;
+
+  if (agent.intelligenceMode === "acp") return runAgentAcp(actor, agentId, agent, userMessage);
 
   const controller = new AbortController();
   activeControllers.set(agentId, controller);
@@ -120,6 +123,65 @@ function waitForApproval(actor, approvalId) {
       }
     });
   });
+}
+
+async function runAgentAcp(actor, agentId, agent, userMessage) {
+  if (!companionUp()) {
+    actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "error", outputLines: [...agent.outputLines, "user: " + userMessage, "assistant: Companion CLI not running. Start it to use ACP agents."] } });
+    return;
+  }
+  actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "running", streamText: null, thinkingTrace: null, outputLines: [...agent.outputLines, "user: " + userMessage] } });
+  let sessionId = agent.acpSessionId;
+  if (!sessionId) {
+    try {
+      const info = await acpSessionNew(agent.acpAgent);
+      sessionId = info.id;
+      actor.send({ type: "UPDATE_AGENT", agentId, patch: { acpSessionId: sessionId } });
+    } catch (e) {
+      actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "error", outputLines: [...agent.outputLines, "assistant: ACP session failed: " + e.message] } });
+      return;
+    }
+  }
+  let streamText = "";
+  const unsub = acpSubscribe(sessionId, (evt) => {
+    const ag = () => actor.getSnapshot().context.agents.find(a => a.agentId === agentId);
+    if (!evt) return;
+    if (evt.type === "acp_event" && evt.data?.params) {
+      const p = evt.data.params;
+      const upd = p.sessionUpdate || p.type || "";
+      if (upd === "agent_message_chunk" || (p.content?.type === "text")) {
+        streamText += (p.content?.text || p.text || "");
+        actor.send({ type: "UPDATE_AGENT", agentId, patch: { streamText } });
+      } else if (upd === "thinking" || p.content?.type === "thinking") {
+        actor.send({ type: "UPDATE_AGENT", agentId, patch: { thinkingTrace: p.content?.text || p.text || "" } });
+      } else if (upd === "tool_use" || p.content?.type === "tool_use") {
+        const name = p.content?.name || p.name || "tool";
+        const cur = ag();
+        actor.send({ type: "UPDATE_AGENT", agentId, patch: { outputLines: [...(cur?.outputLines || []), "tool: " + name + " → " + JSON.stringify(p.content?.input || p.input || {}).slice(0, 150)] } });
+      } else if (upd === "tool_result" || p.content?.type === "tool_result") {
+        const cur = ag();
+        actor.send({ type: "UPDATE_AGENT", agentId, patch: { outputLines: [...(cur?.outputLines || []), "tool: result → " + String(p.content?.output || p.output || "").slice(0, 200)] } });
+      }
+    } else if (evt.type === "session_closed") {
+      actor.send({ type: "UPDATE_AGENT", agentId, patch: { acpSessionId: null } });
+    } else if (evt.type === "stderr") {
+      const cur = ag();
+      if (evt.text && !evt.text.includes("npm warn")) actor.send({ type: "UPDATE_AGENT", agentId, patch: { outputLines: [...(cur?.outputLines || []), "tool: [stderr] " + evt.text.slice(0, 200)] } });
+    }
+  });
+  try {
+    await acpSend(sessionId, userMessage);
+    unsub();
+    const cur = actor.getSnapshot().context.agents.find(a => a.agentId === agentId);
+    const lines = cur?.outputLines || [];
+    if (streamText) lines.push("assistant: " + streamText);
+    actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "idle", streamText: null, thinkingTrace: null, outputLines: lines, lastResult: streamText, lastActivityAt: Date.now() } });
+    actor.send({ type: "MARK_ACTIVITY", agentId });
+    await saveHistory(agentId, lines);
+  } catch (e) {
+    unsub();
+    actor.send({ type: "UPDATE_AGENT", agentId, patch: { status: "error", streamText: null, thinkingTrace: null } });
+  }
 }
 
 function abortAgent(agentId) {

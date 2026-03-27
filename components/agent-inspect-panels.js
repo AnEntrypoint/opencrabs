@@ -6,9 +6,14 @@ import { startJob, stopJob, getJobStatus } from "../cron.js";
 import { runAgent } from "../agent-runner.js";
 import { isConnected as companionConnected, acpSessionNew, acpSessionsList, acpPrompt, acpSessionClose } from "../companion-client.js";
 
-const EXEC_HOSTS = ["browser"];
 const SECURITY_LEVELS = ["deny", "allowlist", "full"];
 const ASK_MODES = ["off", "on-miss", "always"];
+const INTELLIGENCE_MODES = [
+  { id: "direct", name: "Direct API" },
+  { id: "acp:claude", name: "ACP: Claude Code" },
+  { id: "acp:codex", name: "ACP: Codex" },
+  { id: "acp:openclaw", name: "ACP: OpenClaw" },
+];
 
 function renderSwitch(label, value, onChange) {
   return createElement("div", { style: "display:flex;align-items:center;justify-content:space-between;padding:4px 0" },
@@ -40,7 +45,15 @@ async function renderSettings(actor, el) {
         h("div", { style: "font-family:var(--font-mono);font-size:9px;font-weight:500;color:var(--muted-foreground);opacity:.58" }, "SETTINGS"),
         h("div", { style: "font-size:1.1rem;font-weight:600;color:var(--foreground)" }, agent.name)),
       h("button", { class: "ui-btn-icon", onclick: () => actor.send({ type: "SHOW_PANEL", panel: null }) , innerHTML: iconHtml("x", 14) })),
-    renderSelect("Model", agent.model, models, (v) => patch({ model: v })),
+    renderSelect("Intelligence", (agent.intelligenceMode === "acp" ? "acp:" + agent.acpAgent : "direct"), INTELLIGENCE_MODES, (v) => {
+      if (v === "direct") patch({ intelligenceMode: "direct" });
+      else { const parts = v.split(":"); patch({ intelligenceMode: "acp", acpAgent: parts[1] || "claude", acpSessionId: null }); }
+    }),
+    agent.intelligenceMode === "acp"
+      ? h("div", { class: "ui-card", style: "padding:8px 12px;font-size:11px;color:" + (companionConnected() ? "var(--status-running-fg)" : "var(--danger-soft-fg)") },
+          companionConnected() ? "Companion connected — agent will use " + agent.acpAgent + " via ACP" : "Companion not connected — start companion CLI first")
+      : null,
+    agent.intelligenceMode !== "acp" ? renderSelect("Model", agent.model, models, (v) => patch({ model: v })) : null,
     renderSelect("Security", agent.sessionExecSecurity, SECURITY_LEVELS, (v) => patch({ sessionExecSecurity: v })),
     renderSelect("Ask mode", agent.sessionExecAsk, ASK_MODES, (v) => patch({ sessionExecAsk: v })),
     renderSwitch("Tool calling", agent.toolCallingEnabled, () => patch({ toolCallingEnabled: !agent.toolCallingEnabled })),
