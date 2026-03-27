@@ -91,3 +91,15 @@ export async function wcGit(args, cwd) {
 }
 
 export function wcReady() { return _status === 'ready' }
+
+export async function spawnShell(onData) {
+  if (!wc) return null
+  try {
+    const proc = await wc.spawn('sh', [], {
+      terminal: { cols: 80, rows: 24 },
+      env: { HOME: '/root', PATH: '/usr/local/bin:/usr/bin:/bin', TERM: 'xterm-color' }
+    })
+    proc.output.pipeTo(new WritableStream({ write(data) { onData(data) } }))
+    return { input: proc.input, exit: proc.exit }
+  } catch(e) { return null }
+}

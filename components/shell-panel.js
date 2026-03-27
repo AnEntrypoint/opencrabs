@@ -1,5 +1,5 @@
 import { GoogleGenAI } from 'https://esm.sh/@google/genai@1.46.0'
-import { boot, runCli as wcRunCli, wcStatus, onWcStatus, onCdpReady, mountCdpRelay } from '../wc.js'
+import { boot, runCli as wcRunCli, wcStatus, onWcStatus, onCdpReady, mountCdpRelay, spawnShell } from '../wc.js'
 import { renderBrowserPanel } from '../browser.js'
 
 const SW_PATH = '/bridge-sw.js'
@@ -38,7 +38,7 @@ export function mount(el, actor) {
 .sh-tab:hover{color:var(--foreground)}.sh-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 .sh-panel{display:none;flex:1;overflow:hidden;flex-direction:column}.sh-panel.active{display:flex}
 #sh-output,#sh-terminal{flex:1;overflow-y:auto;padding:12px 16px;font-family:var(--font-mono);font-size:13px;line-height:1.6}
-#sh-terminal{background:#0d0f14;color:#a8ff78}
+#sh-terminal{background:#0d0f14;color:#a8ff78;padding:0!important}
 .sh-line{white-space:pre-wrap;word-break:break-word;padding:1px 0}
 .sh-line-user{color:var(--primary)}.sh-line-assistant{color:var(--foreground)}.sh-line-err{color:var(--destructive)}
 .sh-line-info{color:var(--muted-foreground)}.sh-line-tool{color:oklch(0.7 0.15 80)}.sh-line-raw{color:var(--muted-foreground);font-size:11px}
@@ -91,8 +91,42 @@ export function mount(el, actor) {
   const appendTerm = (text, kind) => { const o=$('sh-terminal'); if(!o)return; const d=document.createElement('div'); d.className='sh-line sh-line-'+(kind||'raw'); d.textContent=stripAnsi(text); o.appendChild(d); o.scrollTop=o.scrollHeight }
   const clearOutput = () => { $('sh-output').innerHTML='' }
 
+  let _xtermInited = false
+  async function initXterm() {
+    if (_xtermInited) return
+    _xtermInited = true
+    const termEl = $('sh-terminal')
+    const { Terminal } = await import('https://esm.sh/@xterm/xterm@5.5.0')
+    const { FitAddon } = await import('https://esm.sh/@xterm/addon-fit@0.10.0')
+    const link = document.createElement('link')
+    link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
+    document.head.appendChild(link)
+    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
+    const fit = new FitAddon()
+    term.loadAddon(fit)
+    term.open(termEl)
+    fit.fit()
+    new ResizeObserver(() => fit.fit()).observe(termEl)
+    if (wcStatus() !== 'ready') {
+      term.writeln('\x1b[33mWaiting for WebContainer...\x1b[0m')
+      await new Promise(resolve => { const unsub = onWcStatus(s => { if (s === 'ready') { unsub(); resolve() } }) })
+    }
+    const shell = await spawnShell(data => term.write(data))
+    if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
+    const writer = shell.input.getWriter()
+    const enc = new TextEncoder()
+    term.onData(data => writer.write(enc.encode(data)))
+    fit.fit()
+  }
+
   el.querySelectorAll('.sh-tab').forEach(btn => {
-    btn.onclick = () => { el.querySelectorAll('.sh-tab').forEach(b=>b.classList.remove('active')); el.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active')); btn.classList.add('active'); el.querySelector('#'+btn.dataset.tab).classList.add('active') }
+    btn.onclick = () => {
+      el.querySelectorAll('.sh-tab').forEach(b=>b.classList.remove('active'))
+      el.querySelectorAll('.sh-panel').forEach(p=>p.classList.remove('active'))
+      btn.classList.add('active')
+      el.querySelector('#'+btn.dataset.tab).classList.add('active')
+      if (btn.dataset.tab === 'sh-term') initXterm()
+    }
   })
 
   registerSW()
