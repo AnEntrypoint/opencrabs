@@ -47,12 +47,39 @@ async function* streamAnthropic(apiKey, messages, opts = {}) {
   }
 }
 
+function mapMessagesForOpenAI(messages) {
+  const out = [];
+  for (const m of messages) {
+    if (m.role === "user") {
+      if (typeof m.content === "string") { out.push({ role: "user", content: m.content }); continue; }
+      const toolResults = m.content.filter(b => b.type === "tool_result");
+      if (toolResults.length) {
+        for (const tr of toolResults)
+          out.push({ role: "tool", tool_call_id: tr.tool_use_id, content: typeof tr.content === "string" ? tr.content : JSON.stringify(tr.content) });
+        continue;
+      }
+      out.push({ role: "user", content: m.content.filter(b => b.type === "text").map(b => b.text).join("") });
+    } else if (m.role === "assistant") {
+      if (typeof m.content === "string") { out.push({ role: "assistant", content: m.content }); continue; }
+      const toolUses = m.content.filter(b => b.type === "tool_use");
+      if (toolUses.length) {
+        const text = m.content.filter(b => b.type === "text").map(b => b.text).join("");
+        out.push({ role: "assistant", content: text || null, tool_calls: toolUses.map(tu => ({ id: tu.id, type: "function", function: { name: tu.name, arguments: JSON.stringify(tu.input) } })) });
+        continue;
+      }
+      out.push({ role: "assistant", content: m.content.filter(b => b.type === "text").map(b => b.text).join("") });
+    }
+  }
+  return out;
+}
+
 async function* streamOpenAI(apiKey, messages, opts = {}) {
   const body = {
     model: opts.model || "gpt-4o",
     stream: true,
-    messages: messages.map(m => ({ role: m.role === "assistant" ? "assistant" : "user", content: typeof m.content === "string" ? m.content : JSON.stringify(m.content) })),
+    messages: mapMessagesForOpenAI(messages),
   };
+  if (opts.system) body.messages.unshift({ role: "system", content: opts.system });
   if (opts.tools?.length) body.tools = opts.tools.map(t => ({ type: "function", function: { name: t.name, description: t.description, parameters: t.input_schema } }));
 
   const resp = await fetch("https://api.openai.com/v1/chat/completions", {
@@ -70,6 +97,7 @@ async function* streamOpenAI(apiKey, messages, opts = {}) {
   const reader = resp.body.getReader();
   const decoder = new TextDecoder();
   let buf = "";
+  const state = { toolIdx: 1 };
 
   while (true) {
     const { done, value } = await reader.read();
@@ -78,11 +106,21 @@ async function* streamOpenAI(apiKey, messages, opts = {}) {
     const lines = buf.split("\n");
     buf = lines.pop() || "";
     for (const line of lines) {
-      if (line.startsWith("data: ")) {
-        const data = line.slice(6).trim();
-        if (data === "[DONE]") return;
-        try { yield { type: "openai_chunk", ...JSON.parse(data) }; } catch {}
-      }
+      if (!line.startsWith("data: ")) continue;
+      const data = line.slice(6).trim();
+      if (data === "[DONE]") return;
+      try {
+        const chunk = JSON.parse(data);
+        const delta = chunk.choices?.[0]?.delta;
+        if (!delta) continue;
+        if (delta.content) yield { type: "content_block_delta", index: 0, delta: { type: "text_delta", text: delta.content } };
+        if (delta.tool_calls) {
+          for (const tc of delta.tool_calls) {
+            if (tc.function?.name) { yield { type: "content_block_start", index: state.toolIdx, content_block: { type: "tool_use", id: tc.id || ("tu_" + state.toolIdx), name: tc.function.name, input: {} } }; }
+            if (tc.function?.arguments) yield { type: "content_block_delta", index: state.toolIdx, delta: { type: "input_json_delta", partial_json: tc.function.arguments } };
+          }
+        }
+      } catch {}
     }
   }
 }
