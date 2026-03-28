@@ -1,19 +1,16 @@
 const CHEERPX_CDN = 'https://cxrtnc.leaningtech.com/1.2.9/cx.esm.js'
 const DISK_URL = 'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
-const DISK_CACHE = 'cx-disk-cache-v3'
+const DISK_CACHE = 'cx-disk-cache-v4'
 const SHELL_ENV = ['HOME=/root','TERM=xterm-256color','USER=root','SHELL=/bin/bash','LANG=en_US.UTF-8','LC_ALL=C','PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
 const AGENTS = {
   claude: ['npx', ['-y','@anthropic-ai/claude-code','--dangerously-skip-permissions']],
   kilo:   ['npx', ['-y','@kilocode/cli','kilo']],
 }
 
-const NODE_PROXY = '/node-proxy'
-
 let cx = null
 let _dataDevice = null
 let _status = 'unavailable'
 let _cxReadFunc = null
-let _nodePrefetch = null
 const cbs = new Set()
 
 function setStatus(s) { _status = s; cbs.forEach(fn => fn(s)) }
@@ -26,7 +23,7 @@ export async function boot() {
   if (!globalThis.crossOriginIsolated) { setStatus('unavailable'); return }
   if (cx) return
   setStatus('booting')
-  _nodePrefetch = fetch(NODE_PROXY).catch(() => null)
+
   try {
     const { Linux, CloudDevice, HttpBytesDevice, IDBDevice, OverlayDevice, WebDevice, DataDevice } = await import(CHEERPX_CDN)
     let blockDevice
@@ -51,15 +48,10 @@ export async function boot() {
 
 async function setupNode() {
   try {
-    const checkNode = await cx.run('/usr/bin/test', ['-x', '/usr/local/bin/node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    const checkNpm = await cx.run('/usr/bin/test', ['-x', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    if (checkNode === 0 && checkNpm === 0) { setStatus('ready'); return }
+    const checkNpm = await cx.run('/usr/bin/test', ['-x', '/usr/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    if (checkNpm === 0) { setStatus('ready'); return }
     setStatus('installing-node')
-    const resp = await (_nodePrefetch || fetch(NODE_PROXY))
-    if (!resp || !resp.ok) { setStatus('ready'); return }
-    const buf = await resp.arrayBuffer()
-    await _dataDevice.writeFile('/node.tar.gz', new Uint8Array(buf))
-    await cx.run('/bin/tar', ['-xz', '-C', '/usr/local', '--strip-components=1', '-f', '/data/node.tar.gz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    await cx.run('/usr/bin/apt-get', ['install', '-y', 'npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
   } catch(e) {}
   setStatus('ready')
 }
