@@ -51,17 +51,15 @@ export async function boot() {
 
 async function setupNode() {
   try {
-    const check = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    if (check === 0) { setStatus('ready'); return }
+    const checkNode = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    const checkNpm = await cx.run('/usr/bin/which', ['npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    if (checkNode === 0 && checkNpm === 0) { setStatus('ready'); return }
     setStatus('installing-node')
     const resp = await (_nodePrefetch || fetch(NODE_PROXY))
     if (!resp || !resp.ok) { setStatus('ready'); return }
     const buf = await resp.arrayBuffer()
     await _dataDevice.writeFile('/node.tar.gz', new Uint8Array(buf))
     await cx.run('/bin/tar', ['-xz', '-C', '/usr/local', '--strip-components=1', '-f', '/data/node.tar.gz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/ln', ['-sf', '../lib/node_modules/npm/bin/npm-cli.js', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/ln', ['-sf', '../lib/node_modules/npm/bin/npx-cli.js', '/usr/local/bin/npx'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/chmod', ['+x', '/usr/local/bin/node', '/usr/local/lib/node_modules/npm/bin/npm-cli.js', '/usr/local/lib/node_modules/npm/bin/npx-cli.js'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
   } catch(e) {}
   setStatus('ready')
 }
