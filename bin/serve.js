@@ -28,13 +28,13 @@ function openUrl(url) {
   spawn(cmd, args, { detached: true, stdio: 'ignore', shell: false }).unref()
 }
 
-const NODE_PROXY_URL = 'https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.gz'
+const NPM_PROXY_URL = 'https://registry.npmjs.org/npm/-/npm-6.14.18.tgz'
 
 const port = await findFreePort(PORT)
 const server = createServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }); res.end(); return }
-  if (req.url === '/node-proxy') {
-    https.get(NODE_PROXY_URL, (r) => {
+  if (req.url === '/npm-proxy') {
+    https.get(NPM_PROXY_URL, (r) => {
       res.writeHead(r.statusCode, { 'Content-Type': 'application/gzip', 'Access-Control-Allow-Origin': '*', 'Content-Length': r.headers['content-length'] || '' })
       r.pipe(res)
     }).on('error', (e) => { res.writeHead(502); res.end(JSON.stringify({ error: e.message })) })
