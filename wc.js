@@ -50,10 +50,10 @@ export async function boot() {
 }
 
 async function setupNode() {
-  setStatus('installing-node')
   try {
     const check = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
     if (check === 0) { setStatus('ready'); return }
+    setStatus('installing-node')
     const resp = await (_nodePrefetch || fetch(NODE_PROXY))
     if (!resp || !resp.ok) { setStatus('ready'); return }
     const buf = await resp.arrayBuffer()
