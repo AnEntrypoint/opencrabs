@@ -1,7 +1,6 @@
 const CHEERPX_CDN = 'https://cxrtnc.leaningtech.com/1.2.9/cx.esm.js'
 const DISK_URL = 'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
 const DISK_CACHE = 'cx-disk-cache-v7'
-const NPM_PROXY = '/npm-proxy'
 const SHELL_ENV = ['HOME=/root','TERM=xterm-256color','USER=root','SHELL=/bin/bash','LANG=en_US.UTF-8','LC_ALL=C','PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
 const AGENTS = {
   claude: ['npx', ['-y','@anthropic-ai/claude-code','--dangerously-skip-permissions']],
@@ -48,24 +47,6 @@ export async function boot() {
 }
 
 async function setupNode() {
-  try {
-    const checkNpm = await cx.run('/usr/bin/test', ['-x', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    if (checkNpm === 0) { setStatus('ready'); return }
-    setStatus('installing-node')
-    const resp = await fetch(NPM_PROXY).catch(() => null)
-    if (!resp || !resp.ok) { setStatus('ready'); return }
-    const buf = await resp.arrayBuffer()
-    await _dataDevice.writeFile('/npm.tgz', new Uint8Array(buf))
-    await cx.run('/bin/mkdir', ['-p', '/usr/local/lib/node_modules'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/tar', ['-xz', '-C', '/usr/local/lib/node_modules', '--transform', 's|^package|npm|', '-f', '/data/npm.tgz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    const npmScript = '#!/bin/sh\nexec node /usr/local/lib/node_modules/npm/bin/npm-cli.js "$@"\n'
-    const npxScript = '#!/bin/sh\nexec node /usr/local/lib/node_modules/npm/bin/npx-cli.js "$@"\n'
-    await _dataDevice.writeFile('/npm-bin', new TextEncoder().encode(npmScript))
-    await _dataDevice.writeFile('/npx-bin', new TextEncoder().encode(npxScript))
-    await cx.run('/bin/cp', ['/data/npm-bin', '/usr/local/bin/npm'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/cp', ['/data/npx-bin', '/usr/local/bin/npx'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-    await cx.run('/bin/chmod', ['+x', '/usr/local/bin/npm', '/usr/local/bin/npx'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
-  } catch(e) {}
   setStatus('ready')
 }
 

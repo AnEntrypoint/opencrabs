@@ -1,6 +1,5 @@
 #!/usr/bin/env node
 import { createServer } from 'node:http'
-import https from 'node:https'
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { dirname, join, extname } from 'node:path'
@@ -28,18 +27,9 @@ function openUrl(url) {
   spawn(cmd, args, { detached: true, stdio: 'ignore', shell: false }).unref()
 }
 
-const NPM_PROXY_URL = 'https://registry.npmjs.org/npm/-/npm-6.14.18.tgz'
-
 const port = await findFreePort(PORT)
 const server = createServer((req, res) => {
   if (req.method === 'OPTIONS') { res.writeHead(204, { 'Access-Control-Allow-Origin': '*', 'Access-Control-Allow-Headers': '*' }); res.end(); return }
-  if (req.url === '/npm-proxy') {
-    https.get(NPM_PROXY_URL, (r) => {
-      res.writeHead(r.statusCode, { 'Content-Type': 'application/gzip', 'Access-Control-Allow-Origin': '*', 'Content-Length': r.headers['content-length'] || '' })
-      r.pipe(res)
-    }).on('error', (e) => { res.writeHead(502); res.end(JSON.stringify({ error: e.message })) })
-    return
-  }
   const urlPath = (req.url.split('?')[0] || '/') === '/' ? '/index.html' : req.url.split('?')[0]
   const filePath = join(ROOT, urlPath)
   const mime = MIME[extname(filePath)] || 'text/plain'
