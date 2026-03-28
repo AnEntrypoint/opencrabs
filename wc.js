@@ -1,7 +1,7 @@
 const CHEERPX_CDN = 'https://cxrtnc.leaningtech.com/1.2.9/cx.esm.js'
 const DISK_URL = 'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
 const DISK_CACHE = 'cx-disk-cache'
-const SHELL_ENV = ['HOME=/root','TERM=xterm','USER=root','SHELL=/bin/bash','LANG=en_US.UTF-8','LC_ALL=C','PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
+const SHELL_ENV = ['HOME=/root','TERM=xterm-256color','USER=root','SHELL=/bin/bash','LANG=en_US.UTF-8','LC_ALL=C','PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
 const AGENTS = {
   claude: ['npx', ['-y','@anthropic-ai/claude-code','--dangerously-skip-permissions']],
   kilo:   ['npx', ['-y','@kilocode/cli','kilo']],
@@ -48,10 +48,12 @@ export async function spawnShell(onData) {
   if (!cx) return null
   try {
     const dec = new TextDecoder()
-    _cxReadFunc = cx.setCustomConsole(buf => onData(dec.decode(buf)), 80, 24)
+    let _onData = onData
+    _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf)), 80, 24)
     const input = new WritableStream({ write(data) { for (const ch of data) _cxReadFunc(ch.charCodeAt(0)) } })
+    const resize = (cols, rows) => { _cxReadFunc = cx.setCustomConsole(buf => _onData(dec.decode(buf)), cols, rows) }
     cx.run('/bin/bash', ['--login'], { env: SHELL_ENV, cwd: '/root', uid: 0, gid: 0 }).catch(() => {})
-    return { input, exit: new Promise(() => {}) }
+    return { input, exit: new Promise(() => {}), resize }
   } catch(e) { return null }
 }
 

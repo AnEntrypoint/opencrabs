@@ -102,19 +102,22 @@ export function mount(el, actor) {
     const link = document.createElement('link')
     link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
     document.head.appendChild(link)
-    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: '#0d0f14', foreground: '#a8ff78' } })
+    const cs = getComputedStyle(document.documentElement)
+    const bg = cs.getPropertyValue('--background').trim() || '#0d0f14'
+    const fg = cs.getPropertyValue('--foreground').trim() || '#e8e8e8'
+    const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: bg, foreground: fg } })
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(termEl)
-    // fit after element is visible in DOM
+    let shell = null
     requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.write(t)); _termQueue = [] })
-    new ResizeObserver(() => fit.fit()).observe(termEl)
+    new ResizeObserver(() => { fit.fit(); if (shell) shell.resize(term.cols, term.rows) }).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for Linux VM (CheerpX)...\x1b[0m')
       const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
       if (!ok) { term.writeln('\x1b[31mLinux VM unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
-    const shell = await spawnShell(data => term.write(data))
+    shell = await spawnShell(data => term.write(data))
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
     const writer = shell.input.getWriter()
     term.onData(data => writer.write(data))
