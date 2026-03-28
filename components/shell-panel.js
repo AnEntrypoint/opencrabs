@@ -37,7 +37,9 @@ export function mount(el, actor) {
 .sh-tab:hover{color:var(--foreground)}.sh-tab.active{color:var(--primary);border-bottom-color:var(--primary)}
 .sh-panel{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}.sh-panel.active{display:flex}
 #sh-output{flex:1;overflow-y:auto;padding:12px 16px;font-family:var(--font-mono);font-size:13px;line-height:1.6}
-#sh-terminal{flex:1;min-height:0;width:100%;background:#0d0f14}
+#sh-terminal{flex:1;min-height:0;width:100%;background:#0d0f14;position:relative}
+#sh-terminal .xterm{height:100%}
+#sh-terminal .xterm-viewport{overflow-y:scroll!important;position:absolute!important;top:0;left:0;width:100%!important;height:100%!important}
 .sh-line{white-space:pre-wrap;word-break:break-word;padding:1px 0}
 .sh-line-user{color:var(--primary)}.sh-line-assistant{color:var(--foreground)}.sh-line-err{color:var(--destructive)}
 .sh-line-info{color:var(--muted-foreground)}.sh-line-tool{color:oklch(0.7 0.15 80)}.sh-line-raw{color:var(--muted-foreground);font-size:11px}
