@@ -17,6 +17,7 @@ const appMachine = setup({
     showShell: false,
     shellTab: 'shell',
     wcStatus: 'unavailable',
+    terminalReady: false,
     settings: { anthropicKey: "", openaiKey: "", defaultModel: "claude-sonnet-4-20250514" },
     models: [],
     modelsLoading: false,
@@ -44,6 +45,7 @@ const appMachine = setup({
         RESOLVE_APPROVAL: { actions: assign({ _lastApprovalDecisions: ({ context, event }) => ({ ...context._lastApprovalDecisions, [event.id]: event.decision }), pendingApprovals: ({ context, event }) => context.pendingApprovals.filter(a => a.id !== event.id), agents: ({ context, event }) => { const ap = context.pendingApprovals.find(a => a.id === event.id); if (!ap) return context.agents; const remaining = context.pendingApprovals.filter(a => a.id !== event.id && a.agentId === ap.agentId); return context.agents.map(a => a.agentId === ap.agentId ? { ...a, awaitingUserInput: remaining.length > 0 } : a); } }) },
         MARK_ACTIVITY: { actions: assign({ agents: ({ context, event }) => context.agents.map(a => a.agentId !== event.agentId ? a : { ...a, lastActivityAt: Date.now(), hasUnseenActivity: context.selectedAgentId !== event.agentId }) }) },
         SET_WC_STATUS: { actions: assign({ wcStatus: ({ event }) => event.status }) },
+        SET_TERMINAL_READY: { actions: assign({ terminalReady: ({ event }) => event.ready }) },
       }
     }
   }

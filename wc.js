@@ -1,6 +1,6 @@
 const CHEERPX_CDN = 'https://cxrtnc.leaningtech.com/1.2.9/cx.esm.js'
 const DISK_URL = 'wss://disks.webvm.io/debian_large_20230522_5044875331_2.ext2'
-const DISK_CACHE = 'cx-disk-cache'
+const DISK_CACHE = 'cx-disk-cache-v2'
 const SHELL_ENV = ['HOME=/root','TERM=xterm-256color','USER=root','SHELL=/bin/bash','LANG=en_US.UTF-8','LC_ALL=C','PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin']
 const AGENTS = {
   claude: ['npx', ['-y','@anthropic-ai/claude-code','--dangerously-skip-permissions']],

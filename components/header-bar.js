@@ -17,6 +17,7 @@ function render(actor, el) {
         h("span", { class: "ui-chip " + (hasKey ? "ui-badge-status-connected" : "ui-badge-status-disconnected"), style: "font-size:9px" }, hasKey ? "API Ready" : "No API Key"),
         h("span", { id: "sh-companion-dot", class: "ui-chip ui-badge-status-disconnected", style: "font-size:9px" }, "companion"),
         h("span", { id: "sh-wc-dot", class: "ui-chip ui-badge-status-" + (ctx.wcStatus === 'ready' ? 'running' : (ctx.wcStatus === 'booting' || ctx.wcStatus === 'installing-node') ? 'connecting' : 'disconnected'), style: "font-size:9px" }, ctx.wcStatus === 'installing-node' ? 'installing' : ctx.wcStatus),
+        ctx.wcStatus === 'ready' ? h("span", { class: "ui-chip ui-badge-status-" + (ctx.terminalReady ? 'running' : 'connecting'), style: "font-size:9px" }, ctx.terminalReady ? "term" : "term…") : null,
         h("span", { id: "sh-ext-dot", class: "ui-chip ui-badge-status-disconnected", style: "font-size:9px" }, "ext"),
         h("button", { class: "ui-btn-icon", style: "font-size:11px;padding:4px 8px", onclick: () => { actor.send({ type: "SHOW_SHELL", show: !ctx.showShell }) } }, ctx.showShell ? "Chat" : "Shell"),
         companionConnected() ? h("span", { class: "ui-chip ui-badge-status-running", style: "font-size:9px;display:inline-flex;align-items:center;gap:4px" }, I("terminal", 10), "CLI") : null,

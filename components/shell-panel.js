@@ -99,9 +99,12 @@ export function mount(el, actor) {
     const termEl = $('sh-terminal')
     const { Terminal } = await import('https://esm.sh/@xterm/xterm@5.5.0')
     const { FitAddon } = await import('https://esm.sh/@xterm/addon-fit@0.10.0')
-    const link = document.createElement('link')
-    link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
-    document.head.appendChild(link)
+    await new Promise(resolve => {
+      const link = document.createElement('link')
+      link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
+      link.onload = resolve; link.onerror = resolve
+      document.head.appendChild(link)
+    })
     const cs = getComputedStyle(document.documentElement)
     const bg = cs.getPropertyValue('--background').trim() || '#0d0f14'
     const fg = cs.getPropertyValue('--foreground').trim() || '#e8e8e8'
@@ -121,6 +124,7 @@ export function mount(el, actor) {
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
     const writer = shell.input.getWriter()
     term.onData(data => writer.write(data))
+    actor?.send({ type: 'SET_TERMINAL_READY', ready: true })
   }
 
   function switchTab(tabId) {
