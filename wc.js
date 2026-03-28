@@ -7,7 +7,10 @@ const AGENTS = {
   kilo:   ['npx', ['-y','@kilocode/cli','kilo']],
 }
 
+const NODE_PROXY = '/node-proxy'
+
 let cx = null
+let _dataDevice = null
 let _status = 'unavailable'
 let _cxReadFunc = null
 const cbs = new Set()
@@ -30,18 +33,32 @@ export async function boot() {
     const blockCache = await IDBDevice.create(DISK_CACHE)
     const overlayDevice = await OverlayDevice.create(blockDevice, blockCache)
     const webDevice = await WebDevice.create('')
-    const dataDevice = await DataDevice.create()
+    _dataDevice = await DataDevice.create()
     cx = await Linux.create({ mounts: [
       { type: 'ext2', dev: overlayDevice, path: '/' },
       { type: 'dir', dev: webDevice, path: '/web' },
-      { type: 'dir', dev: dataDevice, path: '/data' },
+      { type: 'dir', dev: _dataDevice, path: '/data' },
       { type: 'devs', path: '/dev' },
       { type: 'devpts', path: '/dev/pts' },
       { type: 'proc', path: '/proc' },
       { type: 'sys', path: '/sys' },
     ]})
-    setStatus('ready')
+    await setupNode()
   } catch(e) { setStatus('unavailable') }
+}
+
+async function setupNode() {
+  setStatus('installing-node')
+  try {
+    const check = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+    if (check === 0) { setStatus('ready'); return }
+    const resp = await fetch(NODE_PROXY)
+    if (!resp.ok) { setStatus('ready'); return }
+    const buf = await resp.arrayBuffer()
+    await _dataDevice.writeFile('/node.tar.gz', new Uint8Array(buf))
+    await cx.run('/bin/tar', ['-xz', '-C', '/usr/local', '--strip-components=1', '-f', '/data/node.tar.gz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
+  } catch(e) {}
+  setStatus('ready')
 }
 
 export async function spawnShell(onData) {

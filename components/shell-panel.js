@@ -114,7 +114,7 @@ export function mount(el, actor) {
     new ResizeObserver(() => { fit.fit(); if (shell) shell.resize(term.cols, term.rows) }).observe(termEl)
     if (wcStatus() !== 'ready') {
       term.writeln('\x1b[33mWaiting for Linux VM (CheerpX)...\x1b[0m')
-      const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
+      const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'installing-node') { term.writeln('\x1b[33mInstalling Node.js 24...\x1b[0m') } else if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
       if (!ok) { term.writeln('\x1b[31mLinux VM unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
     shell = await spawnShell(data => term.write(data))
@@ -138,7 +138,6 @@ export function mount(el, actor) {
   const companion = getCompanion()
   companion.connect()
   companion.onStatus(s => { const dot = document.getElementById('sh-companion-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='connected'?'connected':'disconnected')} })
-  onWcStatus(s => { const dot = document.getElementById('sh-wc-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='ready'?'running':s==='booting'?'connecting':'disconnected')} })
   boot()
   const extDot=document.getElementById('sh-ext-dot'); if(extDot&&typeof chrome!=='undefined'&&chrome.runtime?.id){extDot.textContent='ext ok';extDot.className='ui-chip ui-badge-status-running'}
   renderBrowserPanel($('sh-url'),$('sh-go'),$('sh-snap'),$('sh-frame'))

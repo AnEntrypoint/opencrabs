@@ -11,6 +11,7 @@ import { render as renderApiSetup, init as initApiSetup } from "./components/api
 import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
 import { init as initCtx } from "./components/context-menu.js";
 import { mount as mountShell } from "./components/shell-panel.js";
+import { onWcStatus } from "./wc.js";
 
 const actor = createActor(appMachine);
 let els = {};
@@ -99,5 +100,6 @@ mount();
 initCtx(document.getElementById("oc-ctx"));
 actor.subscribe(renderAll);
 actor.start();
+onWcStatus(s => actor.send({ type: 'SET_WC_STATUS', status: s }));
 initApiSetup(actor);
 boot().then(renderAll);
