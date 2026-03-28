@@ -28,7 +28,7 @@ function openUrl(url) {
   spawn(cmd, args, { detached: true, stdio: 'ignore', shell: false }).unref()
 }
 
-const NODE_PROXY_URL = 'https://nodejs.org/dist/v24.0.0/node-v24.0.0-linux-x64.tar.gz'
+const NODE_PROXY_URL = 'https://nodejs.org/dist/v18.20.8/node-v18.20.8-linux-x64.tar.gz'
 
 const port = await findFreePort(PORT)
 const server = createServer((req, res) => {
