@@ -13,6 +13,7 @@ let cx = null
 let _dataDevice = null
 let _status = 'unavailable'
 let _cxReadFunc = null
+let _nodePrefetch = null
 const cbs = new Set()
 
 function setStatus(s) { _status = s; cbs.forEach(fn => fn(s)) }
@@ -25,6 +26,7 @@ export async function boot() {
   if (!globalThis.crossOriginIsolated) { setStatus('unavailable'); return }
   if (cx) return
   setStatus('booting')
+  _nodePrefetch = fetch(NODE_PROXY).catch(() => null)
   try {
     const { Linux, CloudDevice, HttpBytesDevice, IDBDevice, OverlayDevice, WebDevice, DataDevice } = await import(CHEERPX_CDN)
     let blockDevice
@@ -52,8 +54,8 @@ async function setupNode() {
   try {
     const check = await cx.run('/usr/bin/which', ['node'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
     if (check === 0) { setStatus('ready'); return }
-    const resp = await fetch(NODE_PROXY)
-    if (!resp.ok) { setStatus('ready'); return }
+    const resp = await (_nodePrefetch || fetch(NODE_PROXY))
+    if (!resp || !resp.ok) { setStatus('ready'); return }
     const buf = await resp.arrayBuffer()
     await _dataDevice.writeFile('/node.tar.gz', new Uint8Array(buf))
     await cx.run('/bin/tar', ['-xz', '-C', '/usr/local', '--strip-components=1', '-f', '/data/node.tar.gz'], { env: SHELL_ENV, uid: 0, gid: 0, cwd: '/root' })
