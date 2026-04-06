@@ -119,14 +119,16 @@ export function mount(el, actor) {
     requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.write(t)); _termQueue = [] })
     new ResizeObserver(() => { fit.fit(); if (shell) shell.resize(term.cols, term.rows) }).observe(termEl)
     if (wcStatus() !== 'ready') {
-      term.writeln('\x1b[33mWaiting for Linux VM (CheerpX)...\x1b[0m')
-      const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'installing-node') { term.writeln('\x1b[33mInstalling Node.js 24...\x1b[0m') } else if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
+      term.writeln('\x1b[33mWaiting for Linux VM (container2wasm)...\x1b[0m')
+      const ok = await new Promise(resolve => { let unsub; unsub = onWcStatus(s => { if (s === 'ready') { unsub?.(); resolve(true) } else if (s === 'unavailable') { unsub?.(); resolve(false) } }) })
       if (!ok) { term.writeln('\x1b[31mLinux VM unavailable (requires cross-origin isolation)\x1b[0m'); return }
     }
-    shell = await spawnShell(data => term.write(data))
+    shell = await spawnShell(payload => {
+      if (payload?.xtermAddon) {
+        term.loadAddon(payload.xtermAddon)
+      }
+    })
     if (!shell) { term.writeln('\x1b[31mFailed to spawn shell\x1b[0m'); return }
-    const writer = shell.input.getWriter()
-    term.onData(data => writer.write(data))
     actor?.send({ type: 'SET_TERMINAL_READY', ready: true })
   }
 
