@@ -18,7 +18,7 @@ jobs:
       - name: Build WASM
         run: |
           mkdir -p containers
-          c2w --net=browser node:23-alpine /tmp/nodejs.wasm
+          c2w --build-arg=WASI_NET=browser node:23-alpine /tmp/nodejs.wasm
           split -b 50000000 /tmp/nodejs.wasm /tmp/nodejs_chunk_
           i=0
           for f in /tmp/nodejs_chunk_*; do
