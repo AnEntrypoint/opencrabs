@@ -44,3 +44,4 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - `createSystem(id, {layers:['opencode','claude']})` fetches `./containers/layer-<id>.chunks` for each layer id, builds extra WASM URLs, passes them to `makeWorkerBlob` 6th param `extraUrls`; layer chunks are appended after base nodejs chunks in the worker fetch list
 - `makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd, extraUrls=[])` — 6th param appended to chunk URL array before baking into worker blob
 - `.github/workflows/build-layers.yml` — matrix of 4 tool layers; each job: c2w build with Dockerfile installing the npm tool, split at 50MB, artifacts uploaded; `write-manifest` job assembles `containers/layers.json` from available artifacts and commits
+- Shell heredocs (`<<EOF`) inside YAML `run:` blocks break GitHub Actions YAML parsing — the unquoted content lines become bare YAML tokens; use `printf 'line1\nline2\n' > file` instead of heredocs in any `run:` step
