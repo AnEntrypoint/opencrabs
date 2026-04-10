@@ -2,7 +2,7 @@ import { createSystem } from '../wc.js'
 import { mount as mountTerm } from './term-view.js'
 
 const uid = () => Math.random().toString(36).slice(2, 10)
-const CMDS = ['sh -i', 'opencode-ai', 'claude', 'kilo', 'codex']
+const CMDS = ['sh -i', 'opencode', 'claude', 'kilo', 'codex']
 
 let _layers = []
 async function fetchLayers() {
