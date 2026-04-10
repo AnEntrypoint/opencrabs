@@ -1,1 +1,26 @@
-[]
+[
+  {
+    "id": "opencode",
+    "name": "opencode-ai",
+    "label": "OpenCode AI",
+    "chunks": 25
+  },
+  {
+    "id": "claude",
+    "name": "@anthropic-ai/claude-code",
+    "label": "Claude Code",
+    "chunks": 8
+  },
+  {
+    "id": "kilo",
+    "name": "@kilocode/cli",
+    "label": "Kilo Code",
+    "chunks": 29
+  },
+  {
+    "id": "codex",
+    "name": "@openai/codex",
+    "label": "Codex",
+    "chunks": 11
+  }
+]
