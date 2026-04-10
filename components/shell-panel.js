@@ -100,8 +100,11 @@ export function mount(el, actor) {
     if (_xtermInited) return
     _xtermInited = true
     const termEl = $('sh-terminal')
-    const { Terminal } = await import('https://esm.sh/@xterm/xterm@5.5.0')
-    const { FitAddon } = await import('https://esm.sh/@xterm/addon-fit@0.10.0')
+    const [{ Terminal }, { FitAddon }, { CanvasAddon }] = await Promise.all([
+      import('https://esm.sh/@xterm/xterm@5.5.0'),
+      import('https://esm.sh/@xterm/addon-fit@0.10.0'),
+      import('https://esm.sh/@xterm/addon-canvas@0.7.0'),
+    ])
     await new Promise(resolve => {
       const link = document.createElement('link')
       link.rel = 'stylesheet'; link.href = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
@@ -115,6 +118,7 @@ export function mount(el, actor) {
     const fit = new FitAddon()
     term.loadAddon(fit)
     term.open(termEl)
+    term.loadAddon(new CanvasAddon())
     let shell = null
     requestAnimationFrame(() => { fit.fit(); _term = term; _termQueue.forEach(t => term.write(t)); _termQueue = [] })
     new ResizeObserver(() => { fit.fit(); if (shell) shell.resize(term.cols, term.rows) }).observe(termEl)
