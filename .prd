@@ -1,32 +1,5 @@
 [
   {
-    "id": "systems-panel",
-    "subject": "Replace shell-panel with systems-panel: system lifecycle UI + multi-terminal management",
-    "status": "pending",
-    "description": "New components/systems-panel.js replaces components/shell-panel.js entirely. Layout: left column = systems list (each showing name, mode badge, status dot, terminal count) + '+New System' button. Right area = selected system: tabs row showing terminals (+New Terminal button) + active terminal xterm. New System dialog: name, mode selector (ephemeral/persistent/resumable), layer checkboxes (read from layers.json). New Terminal dialog: label, optional command override (default: interactive sh; alt: 'opencode-ai', 'claude', 'kilo', 'codex'). Each terminal is independently scrollable xterm with CanvasAddon. Ephemeral system auto-destroys when last terminal closed. Remove sh-shell chat panel (agent chat stays in agent-chat-panel). Split across systems-panel.js + components/term-view.js if needed to stay ≤200L each.",
-    "effort": "large",
-    "category": "feature",
-    "blocking": [
-      "app-systems-wire"
-    ],
-    "blockedBy": [],
-    "acceptance": [
-      "+New System button opens dialog, on confirm boots WASM worker with selected layers",
-      "System status updates to 'ready' when boot completes",
-      "+New Terminal on ready system opens xterm tab connected to that system",
-      "Multiple terminals on same system each have independent xterm instances",
-      "Mode=ephemeral system destroyed when user closes last terminal",
-      "Mode=resumable system persists; re-attaching creates new PTY to same worker",
-      "systems-panel.js ≤200 lines, any split files also ≤200 lines",
-      "shell-panel.js deleted"
-    ],
-    "edge_cases": [
-      "layers.json missing: show empty layer list, no error",
-      "System boot fails: status=unavailable, show error in terminal area",
-      "Multiple terminals same system: all PTYs open against same worker independently"
-    ]
-  },
-  {
     "id": "app-systems-wire",
     "subject": "Wire systems panel into app.js, remove shell panel references",
     "status": "pending",

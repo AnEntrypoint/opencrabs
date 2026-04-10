@@ -37,4 +37,8 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - Worker blob source lives in `wc-workers.js` (exported); `wc.js` handles boot orchestration only
 - Companion WebSocket (`getCompanion()`) connects on-demand from `runCli()` only — never eagerly at mount; no auto-reconnect loop
 - `appMachine` context field is `showSystems` (not `showShell`); `SHOW_SHELL` event is a kept alias that sets `showSystems` — reading `ctx.showShell` will be `undefined`, always read `ctx.showSystems`
-- `appMachine` context `systems[]` shape: `{id, name, mode:'ephemeral'|'persistent'|'resumable', status, layers:[], terminals:[{id,label,cmd}], selectedTerminalId}`; `createAgentConfig` gains `systemMode` (default `'ephemeral'`)
+- `appMachine` context `systems[]` shape: `{id, name, mode:'ephemeral'|'persistent'|'resumable', status, layers:[], terminals:[{id,label,cmd,wcId}], selectedTerminalId}`; `createAgentConfig` gains `systemMode` (default `'ephemeral'`)
+- `components/systems-panel.js` exports `mount(el, actor)` — replaces `shell-panel.js`; left sidebar = systems list, right = terminal tabs + xterm; each terminal gets its own independent WASM worker (keyed by `wcId` in terminal record)
+- `components/term-view.js` exports `mount(el, sys)` — mounts a single xterm Terminal with CanvasAddon + FitAddon into `el`, connects via `sys.spawnShell()`; returns `{dispose()}`
+- Terminal `wcId` field: each terminal spawns its own `createSystem(wcId)` worker so multiple terminals = multiple independent workers; `_termSystems` Map in systems-panel tracks wcId→system; `window.__debug.systems` exposes it
+- Ephemeral mode: when last terminal of a system is closed, all wcId workers for that system are destroyed
