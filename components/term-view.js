@@ -37,7 +37,7 @@ export async function mount(el, sys) {
     await new Promise((resolve, reject) => {
       const unsub = sys.onStatus(s => {
         if (s === 'ready') { unsub(); resolve() }
-        else if (s === 'unavailable') { unsub(); reject(new Error('system unavailable')) }
+        else if (s === 'unavailable') { unsub(); reject(new Error('system unavailable — check console for details')) }
       })
     })
   }

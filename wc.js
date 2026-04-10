@@ -87,7 +87,7 @@ export function createSystem(id, opts) {
     id,
     get status() { return status },
     boot: async function() {
-      if (!globalThis.crossOriginIsolated) { setStatus('unavailable'); return }
+      if (!globalThis.crossOriginIsolated) { setStatus('unavailable'); throw new Error('crossOriginIsolated required — service worker not active yet, reload the page') }
       if (worker) return
       setStatus('booting')
       try {
