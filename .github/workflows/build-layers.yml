@@ -21,7 +21,7 @@ jobs:
             pkg: "@anthropic-ai/claude-code"
             label: Claude Code
           - id: kilo
-            pkg: kilo-code
+            pkg: "@kilocode/cli"
             label: Kilo Code
           - id: codex
             pkg: "@openai/codex"
@@ -78,7 +78,7 @@ jobs:
           const entries = [
             { id: 'opencode', name: 'opencode-ai', label: 'OpenCode AI' },
             { id: 'claude', name: '@anthropic-ai/claude-code', label: 'Claude Code' },
-            { id: 'kilo', name: 'kilo-code', label: 'Kilo Code' },
+            { id: 'kilo', name: '@kilocode/cli', label: 'Kilo Code' },
             { id: 'codex', name: '@openai/codex', label: 'Codex' },
           ];
           const layers = [];
