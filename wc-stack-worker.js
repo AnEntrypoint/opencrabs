@@ -1,18 +1,16 @@
-var DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
-importScripts(DEMO_BASE + '/src/browser_wasi_shim/index.js')
-importScripts(DEMO_BASE + '/src/browser_wasi_shim/wasi_defs.js')
-importScripts(DEMO_BASE + '/src/worker-util.js')
-importScripts(DEMO_BASE + '/src/wasi-util.js')
-
 var ERRNO_INVAL = 28
+var ERRNO_AGAIN = 6
 
 onmessage = function(msg) {
-  if (!serveIfInitMsg(msg)) return
-  onmessage = null
+  serveIfInitMsg(msg)
   var fds = [undefined, undefined, undefined, undefined, undefined, undefined]
-  var wasi = new WASI(['arg0', '--certfd=3', '--net-listenfd=4'], [], fds)
-  wasiHackProxy(wasi, 3, 5)
-  wasiHackSocket(wasi, 4, 5)
+  var certfd = 3
+  var listenfd = 4
+  var args = ['arg0', '--certfd=' + certfd, '--net-listenfd=' + listenfd]
+  var env = []
+  var wasi = new WASI(args, env, fds)
+  wasiHack(wasi, certfd, 5)
+  wasiHackSocket(wasi, listenfd, 5)
   fetch(getImagename(), { credentials: 'same-origin' }).then(function(resp) {
     resp.arrayBuffer().then(function(wasm) {
       WebAssembly.instantiate(wasm, {
@@ -23,7 +21,7 @@ onmessage = function(msg) {
   })
 }
 
-function wasiHackProxy(wasi, certfd, connfd) {
+function wasiHack(wasi, certfd, connfd) {
   var certbuf = new Uint8Array(0)
   var _fd_close = wasi.wasiImport.fd_close
   wasi.wasiImport.fd_close = function(fd) {

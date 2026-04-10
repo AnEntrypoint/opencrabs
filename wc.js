@@ -1,3 +1,5 @@
+import { makeWorkerBlob, makeStackWorkerBlob } from './wc-workers.js'
+
 const DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
 const XTERM_PTY_CDN = 'https://cdn.jsdelivr.net/npm/xterm-pty@0.9.4'
 const IMAGE_PREFIX = './containers/nodejs'
@@ -27,57 +29,25 @@ export function wcStatus() { return _status }
 export function onWcStatus(fn) { cbs.add(fn); fn(_status); return () => cbs.delete(fn) }
 export function wcReady() { return _status === 'ready' }
 
+async function fetchText(url) {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error('fetch failed: ' + url + ' ' + r.status)
+  return r.text()
+}
+
 async function fetchChunkCount() {
   const r = await fetch(CHUNKS_URL)
   if (!r.ok) throw new Error('chunks file fetch failed: ' + r.status)
   return parseInt((await r.text()).trim(), 10)
 }
 
-function makeWorkerBlob(chunks, env) {
-  const chunkUrls = Array.from({ length: chunks }, (_, i) =>
-    IMAGE_PREFIX + String(i).padStart(2, '0') + '.wasm'
-  )
-  const src = `
-importScripts(${JSON.stringify(XTERM_PTY_CDN + '/workerTools.js')});
-importScripts(${JSON.stringify(DEMO_BASE + '/src/browser_wasi_shim/index.js')});
-importScripts(${JSON.stringify(DEMO_BASE + '/src/browser_wasi_shim/wasi_defs.js')});
-importScripts(${JSON.stringify(DEMO_BASE + '/src/worker-util.js')});
-importScripts(${JSON.stringify(DEMO_BASE + '/src/wasi-util.js')});
-onmessage = (msg) => {
-  if (serveIfInitMsg(msg)) return;
-  var ttyClient = new TtyClient(msg.data);
-  recvCert().then((cert) => {
-    var certDir = getCertDir(cert);
-    var fds = [undefined, undefined, undefined, certDir, undefined, undefined];
-    var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac()];
-    var env = ${JSON.stringify(env)};
-    var urls = ${JSON.stringify(chunkUrls)};
-    Promise.all(urls.map(u => fetch(u).then(r => { if(!r.ok) throw new Error(u+' '+r.status); return r.arrayBuffer(); })))
-      .then(bufs => {
-        var total = bufs.reduce((n,b) => n+b.byteLength, 0);
-        var merged = new Uint8Array(total); var off = 0;
-        for (var b of bufs) { merged.set(new Uint8Array(b), off); off += b.byteLength; }
-        var wasi = new WASI(args, env, fds);
-        wasiHack(wasi, ttyClient, 5);
-        wasiHackSocket(wasi, 4, 5);
-        WebAssembly.instantiate(merged, { 'wasi_snapshot_preview1': wasi.wasiImport })
-          .then((inst) => wasi.start(inst.instance));
-      });
-  });
-};
-function genmac() {
-  return '02:XX:XX:XX:XX:XX'.replace(/X/g, () =>
-    '0123456789ABCDEF'.charAt(Math.floor(Math.random() * 16)));
-}
-`
-  return URL.createObjectURL(new Blob([src], { type: 'application/javascript' }))
-}
-
-async function loadScript(url) {
+async function fetchAndExecScript(src) {
   return new Promise((resolve, reject) => {
-    if (document.querySelector(`script[src="${url}"]`)) { resolve(); return }
     const s = document.createElement('script')
-    s.src = url; s.onload = resolve; s.onerror = reject
+    const blob = new Blob([src], { type: 'application/javascript' })
+    s.src = URL.createObjectURL(blob)
+    s.onload = () => { URL.revokeObjectURL(s.src); resolve() }
+    s.onerror = reject
     document.head.appendChild(s)
   })
 }
@@ -87,14 +57,23 @@ export async function boot() {
   if (_worker) return
   setStatus('booting')
   try {
-    const [chunks, stackSrc] = await Promise.all([
+    const [chunks, stackSrc, workerTools, shim, wasiDefs, workerUtil, wasiUtil, xtermJs, stackJs] = await Promise.all([
       fetchChunkCount(),
-      fetch(STACK_WORKER_URL).then(r => { if (!r.ok) throw new Error('stack worker fetch: ' + r.status); return r.text() }),
+      fetchText(STACK_WORKER_URL),
+      fetchText(XTERM_PTY_CDN + '/workerTools.js'),
+      fetchText(DEMO_BASE + '/src/browser_wasi_shim/index.js'),
+      fetchText(DEMO_BASE + '/src/browser_wasi_shim/wasi_defs.js'),
+      fetchText(DEMO_BASE + '/src/worker-util.js'),
+      fetchText(DEMO_BASE + '/src/wasi-util.js'),
+      fetchText(XTERM_PTY_CDN + '/index.js'),
+      fetchText(DEMO_BASE + '/src/stack.js'),
     ])
-    await loadScript(XTERM_PTY_CDN + '/index.js')
-    await loadScript(DEMO_BASE + '/src/stack.js')
-    _worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV))
-    _stackWorker = new Worker(URL.createObjectURL(new Blob([stackSrc], { type: 'application/javascript' })))
+    await fetchAndExecScript(xtermJs)
+    await fetchAndExecScript(stackJs)
+    const sharedScripts = [shim, wasiDefs, workerUtil, wasiUtil]
+    const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
+    _worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix))
+    _stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
     _nwStack = window.newStack(_worker, IMAGE_PREFIX, chunks, _stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
     setStatus('ready')
   } catch(e) {

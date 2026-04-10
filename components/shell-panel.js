@@ -1,4 +1,4 @@
-import { boot, runCli as wcRunCli, wcStatus, onWcStatus, spawnShell } from '../wc.js'
+import { runCli as wcRunCli, wcStatus, onWcStatus, spawnShell } from '../wc.js'
 import { renderBrowserPanel } from '../browser.js'
 
 const SW_PATH = './bridge-sw.js'
@@ -147,7 +147,6 @@ export function mount(el, actor) {
   const companion = getCompanion()
   companion.connect()
   companion.onStatus(s => { const dot = document.getElementById('sh-companion-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='connected'?'connected':'disconnected')} })
-  boot()
   const extDot=document.getElementById('sh-ext-dot'); if(extDot&&typeof chrome!=='undefined'&&chrome.runtime?.id){extDot.textContent='ext ok';extDot.className='ui-chip ui-badge-status-running'}
   renderBrowserPanel($('sh-url'),$('sh-go'),$('sh-snap'),$('sh-frame'))
 
