@@ -7,11 +7,15 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 ## Linux VM (container2wasm WASI mode)
 
 - WASM chunks served from `/containers/nodejs*.wasm`, count from `/containers/nodejs.chunks`
-- `wc.js` fetches chunk count at boot, builds worker blob dynamically with correct chunk URLs
+- `wc.js` exports `createSystem(id, opts)` returning `{id, status, boot(), spawnShell(), destroy(), onStatus()}`; `getSystem(id)` retrieves from registry or returns null; `bootAssets()` caches CDN fetches once across all systems
+- Each system owns its own `worker`, `stackWorker`, `nwStack`, `status`, and `cbs` Set — two `createSystem` calls produce two independent WASM workers
+- `_registry` (Map) keyed by id; `createSystem` re-uses existing entry if id already present (resumable pattern)
+- `opts.mode`: `'ephemeral'|'persistent'|'resumable'` — stored on the system object for lifecycle management by callers
+- Backward-compat `boot()`, `spawnShell()`, `wcStatus()`, `onWcStatus()` delegate to the `'default'` system created at module init
 - Stack worker (networking proxy) lives in `wc-stack-worker.js` — served as static file, fetched as text at boot, blobbed into a Worker
-- Two workers: main TTY worker (runs the container WASM) + stack worker (runs `c2w-net-proxy.wasm` for HTTP proxy)
+- Two workers per system: main TTY worker (runs the container WASM) + stack worker (runs `c2w-net-proxy.wasm` for HTTP proxy)
 - Networking via virtual IP `192.168.127.253:80`, env vars `http_proxy`/`https_proxy`/`SSL_CERT_FILE` injected at boot
-- `window.newStack`, `window.openpty`, `window.TtyServer` come from CDN UMD scripts loaded via `<script>` tags in `boot()`
+- `window.newStack`, `window.openpty`, `window.TtyServer` come from CDN UMD scripts loaded once via `bootAssets()`
 - `crossOriginIsolated` is false on first visit — service worker installs, reloads page, then it's true
 
 ## Build Workflow
