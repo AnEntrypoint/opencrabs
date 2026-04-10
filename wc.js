@@ -63,6 +63,19 @@ export function bootAssets() {
   return _assetsPromise
 }
 
+async function fetchLayerUrls(layers) {
+  if (!layers || !layers.length) return []
+  const urls = []
+  for (const layerId of layers) {
+    const r = await fetch('./containers/layer-' + layerId + '.chunks')
+    if (!r.ok) throw new Error('layer chunks missing: ' + layerId + ' ' + r.status)
+    const n = parseInt((await r.text()).trim(), 10)
+    const abs = new URL('./containers/layer-' + layerId, location.href).href
+    for (let i = 0; i < n; i++) urls.push(abs + String(i).padStart(2, '0') + '.wasm')
+  }
+  return urls
+}
+
 export function createSystem(id, opts) {
   opts = opts || {}
   if (_registry.has(id)) return _registry.get(id)
@@ -80,7 +93,8 @@ export function createSystem(id, opts) {
       try {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
-        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix))
+        const extraUrls = await fetchLayerUrls(opts.layers)
+        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, ['-i'], extraUrls))
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
         setStatus('ready')

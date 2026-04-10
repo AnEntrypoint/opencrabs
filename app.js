@@ -10,7 +10,7 @@ import { render as renderInspect } from "./components/agent-inspect-panels.js";
 import { render as renderApiSetup, init as initApiSetup } from "./components/api-setup.js";
 import { render as renderModal, open as openModal } from "./components/agent-create-modal.js";
 import { init as initCtx } from "./components/context-menu.js";
-import { mount as mountShell } from "./components/shell-panel.js";
+import { mount as mountShell } from "./components/systems-panel.js";
 import { boot as bootWc, onWcStatus } from "./wc.js";
 
 const actor = createActor(appMachine);

@@ -42,3 +42,6 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - `components/term-view.js` exports `mount(el, sys)` — mounts a single xterm Terminal with CanvasAddon + FitAddon into `el`, connects via `sys.spawnShell()`; returns `{dispose()}`
 - Terminal `wcId` field: each terminal spawns its own `createSystem(wcId)` worker so multiple terminals = multiple independent workers; `_termSystems` Map in systems-panel tracks wcId→system; `window.__debug.systems` exposes it
 - Ephemeral mode: when last terminal of a system is closed, all wcId workers for that system are destroyed
+- `createSystem(id, {layers:['opencode','claude']})` fetches `./containers/layer-<id>.chunks` for each layer id, builds extra WASM URLs, passes them to `makeWorkerBlob` 6th param `extraUrls`; layer chunks are appended after base nodejs chunks in the worker fetch list
+- `makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd, extraUrls=[])` — 6th param appended to chunk URL array before baking into worker blob
+- `.github/workflows/build-layers.yml` — matrix of 4 tool layers; each job: c2w build with Dockerfile installing the npm tool, split at 50MB, artifacts uploaded; `write-manifest` job assembles `containers/layers.json` from available artifacts and commits

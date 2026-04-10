@@ -1,7 +1,8 @@
-export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i']) {
-  const chunkUrls = Array.from({ length: chunks }, (_, i) =>
-    imagePrefix + String(i).padStart(2, '0') + '.wasm'
-  )
+export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], extraUrls = []) {
+  const chunkUrls = [
+    ...Array.from({ length: chunks }, (_, i) => imagePrefix + String(i).padStart(2, '0') + '.wasm'),
+    ...extraUrls,
+  ]
   const preamble = scripts.join('\n')
   const src = preamble + `
 var ERRNO_INVAL = 28;
