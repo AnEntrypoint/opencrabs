@@ -35,7 +35,6 @@ Browser app served from GH Pages. No server-side rendering. `bridge-sw.js` servi
 - VM boots to `/bin/sh` (busybox) via `-entrypoint /bin/sh -- -i`; the `--` separator overrides the container's baked-in CMD (`node`); `-i` makes sh interactive; `makeWorkerBlob` 5th param `cmd` (default `['-i']`) replaces what follows `--` — pass `['sh','-c','exec myapp']` to launch a specific process; `cmd` is `JSON.stringify`'d into the blob template string at call time, not at worker eval time
 - `wasiHack` (TTY fd_read/fd_write/poll_oneoff patches) is defined inline in the `makeWorkerBlob` blob source in `wc-workers.js` — it is NOT in the shared CDN scripts
 - Worker blob source lives in `wc-workers.js` (exported); `wc.js` handles boot orchestration only
-- Companion WebSocket (`getCompanion()`) connects on-demand from `runCli()` only — never eagerly at mount; no auto-reconnect loop
 - `appMachine` context field is `showSystems` (not `showShell`); `SHOW_SHELL` event is a kept alias that sets `showSystems` — reading `ctx.showShell` will be `undefined`, always read `ctx.showSystems`
 - `appMachine` context `systems[]` shape: `{id, name, mode:'ephemeral'|'persistent'|'resumable', status, layers:[], terminals:[{id,label,cmd,wcId}], selectedTerminalId}`; `createAgentConfig` gains `systemMode` (default `'ephemeral'`)
 - `components/systems-panel.js` exports `mount(el, actor)` — replaces `shell-panel.js`; left sidebar = systems list, right = terminal tabs + xterm; each terminal gets its own independent WASM worker (keyed by `wcId` in terminal record)
