@@ -61,7 +61,7 @@ ${_layers.length ? _layers.map(l=>`<label style="display:flex;gap:8px;font-size:
     overlay.remove()
     const id = uid()
     actor.send({ type: 'ADD_SYSTEM', system: { id, name, mode, status: 'booting', layers, terminals: [], selectedTerminalId: null } })
-    const sys = createSystem(id, { mode })
+    const sys = createSystem(id, { mode, layers })
     sys.onStatus(s => actor.send({ type: 'UPDATE_SYSTEM', id, patch: { status: s } }))
     try { await sys.boot() } catch (e) { actor.send({ type: 'UPDATE_SYSTEM', id, patch: { status: 'unavailable' } }) }
   }
