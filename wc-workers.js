@@ -1,4 +1,4 @@
-export function makeWorkerBlob(chunks, env, scripts, imagePrefix) {
+export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i']) {
   const chunkUrls = Array.from({ length: chunks }, (_, i) =>
     imagePrefix + String(i).padStart(2, '0') + '.wasm'
   )
@@ -12,7 +12,7 @@ onmessage = function(msg) {
   recvCert().then(function(cert) {
     var certDir = getCertDir(cert);
     var fds = [undefined, undefined, undefined, certDir, undefined, undefined];
-    var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--', '-i'];
+    var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--'].concat(${JSON.stringify(cmd)});
     var env = ${JSON.stringify(env)};
     var urls = ${JSON.stringify(chunkUrls)};
     Promise.all(urls.map(function(u) {
