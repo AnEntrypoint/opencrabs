@@ -22,7 +22,7 @@ function getCompanion() {
   let ws=null,id=0,pending=new Map(),subs=new Map(),status='disconnected'
   const onStatus=new Set()
   function setStatus(s){status=s;onStatus.forEach(fn=>fn(s))}
-  function connect(){if(ws)return;ws=new WebSocket(RPC_URL);setStatus('connecting');ws.onopen=()=>setStatus('connected');ws.onmessage=e=>{try{const msg=JSON.parse(e.data);if(msg.stream&&subs.has(msg.sessionId)){subs.get(msg.sessionId)(msg.event);return}if(msg.id!=null&&pending.has(msg.id)){const{resolve,reject}=pending.get(msg.id);pending.delete(msg.id);msg.error?reject(new Error(msg.error)):resolve(msg.result)}}catch{}};ws.onclose=()=>{ws=null;setStatus('disconnected');setTimeout(connect,3000)};ws.onerror=()=>{}}
+  function connect(){if(ws)return;ws=new WebSocket(RPC_URL);setStatus('connecting');ws.onopen=()=>setStatus('connected');ws.onmessage=e=>{try{const msg=JSON.parse(e.data);if(msg.stream&&subs.has(msg.sessionId)){subs.get(msg.sessionId)(msg.event);return}if(msg.id!=null&&pending.has(msg.id)){const{resolve,reject}=pending.get(msg.id);pending.delete(msg.id);msg.error?reject(new Error(msg.error)):resolve(msg.result)}}catch{}};ws.onclose=()=>{ws=null;setStatus('disconnected')};ws.onerror=()=>{}}
   function call(method,params){return new Promise((resolve,reject)=>{if(status!=='connected')return reject(new Error('companion offline'));const rid=++id;pending.set(rid,{resolve,reject});ws.send(JSON.stringify({id:rid,method,params}));setTimeout(()=>{if(pending.has(rid)){pending.delete(rid);reject(new Error('timeout'))}},30000)})}
   _companion={connect,call,subscribe:(sid,fn)=>subs.set(sid,fn),unsubscribe:sid=>subs.delete(sid),onStatus:fn=>{onStatus.add(fn);fn(status);return()=>onStatus.delete(fn)},get status(){return status}}
   return _companion
@@ -145,7 +145,6 @@ export function mount(el, actor) {
 
   registerSW()
   const companion = getCompanion()
-  companion.connect()
   companion.onStatus(s => { const dot = document.getElementById('sh-companion-dot'); if(dot){dot.textContent=s;dot.className='ui-chip ui-badge-status-'+(s==='connected'?'connected':'disconnected')} })
   const extDot=document.getElementById('sh-ext-dot'); if(extDot&&typeof chrome!=='undefined'&&chrome.runtime?.id){extDot.textContent='ext ok';extDot.className='ui-chip ui-badge-status-running'}
   renderBrowserPanel($('sh-url'),$('sh-go'),$('sh-snap'),$('sh-frame'))
@@ -174,6 +173,7 @@ export function mount(el, actor) {
 
   async function runCli(agent, prompt) {
     appendLine('you: '+prompt,'user')
+    companion.connect()
     if(wcStatus()==='ready'){appendLine('[running '+agent+' — see Terminal tab]','info');appendTerm('--- '+agent+' ---');await wcRunCli(agent,prompt,evt=>{appendTerm(evt.text);const t=evt.text.replace(/[\r\n]/g,'').trim();if(t&&!/^[\\|/\-]+$/.test(t))appendLine(evt.text,'assistant')});return}
     if(companion.status!=='connected'){appendLine('Linux VM unavailable and companion offline — run: node bin/serve.js','err');return}
     appendLine('[spawning '+agent+' via companion…]','info')
