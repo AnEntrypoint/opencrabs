@@ -11,3 +11,14 @@
 
 ## 2026-04-10
 - feat(machines): add systems+terminal lifecycle model to appMachine; rename showShell→showSystems; remove shellTab; add systems:[],selectedSystemId:null to context; add ADD/REMOVE/UPDATE/SELECT_SYSTEM and ADD/REMOVE/SELECT/UPDATE_TERMINAL events; SHOW_SHELL kept as alias; createAgentConfig gains systemMode field (default 'ephemeral')
+
+## 2026-04-10
+- fix(systems-panel): always show layers section in New System dialog; await fetchLayers before open; show CI-build-pending msg when layers.json empty
+- fix(systems-panel): reset el._sysId on system switch to prevent stale tabbar/termwrap
+- fix(systems-panel): pass sysId not sysRecord to openNewTermDialog to avoid stale closure
+- fix(systems-panel): reset termwrap._tid=null when no terminal selected
+- fix(term-view): improve unavailable-status error message clarity
+- fix(wc): boot() throws on crossOriginIsolated=false instead of silent return
+- feat(wc): fetchLayerUrls() + opts.layers support for WASM layer concatenation
+- fix(build-layers): docker build image first, then pass tag to c2w; fix heredoc quoting
+- validated: systems panel e2e — new-system dialog, system creation, terminal mount, xterm canvas
