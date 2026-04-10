@@ -97,7 +97,7 @@ async function mountTerminal(el, sysRecord, tid, actor) {
   const termEl = document.createElement('div')
   termEl.style.cssText = 'width:100%;height:100%'
   el.appendChild(termEl)
-  const sys = createSystem(term.wcId, { mode: sysRecord.mode })
+  const sys = createSystem(term.wcId, { mode: sysRecord.mode, layers: sysRecord.layers })
   _termSystems.set(tid, sys)
   try {
     if (sys.status !== 'ready') await sys.boot()
