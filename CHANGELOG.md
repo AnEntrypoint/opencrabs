@@ -1,4 +1,5 @@
 ## [unreleased]
+- fix(build-wasm): move c2w output and Dockerfile to workspace dir to avoid /tmp/snap-private-tmp permission denied on ubuntu-latest runners
 - feat(opfs): add OPFS-backed persistent filesystem in worker blob; OPFSOpenFile writes sync to OPFS via createSyncAccessHandle; default /root mount; progress messages {type:'opfs-init'} forwarded via wc.js onProgress
 - ci(build-wasm): switch to alpine:3.20 base WASM; remove build-layers.yml and all layer WASM/chunks from containers/
 - refactor(layers): redesign layers.json as mount descriptors with mountPath and tools array; remove chunk counts - 2026-04-11
