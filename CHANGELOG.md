@@ -1,6 +1,11 @@
 ## [unreleased]
 
 ### Fixed
+- fix(build-layers,build-wasm): add git restore --staged after reset --soft so bot push never includes workflow files (prevents "refusing to allow GitHub App to update workflow" rejection)
+
+## [unreleased]
+
+### Fixed
 - fix(build-wasm): fetch origin/master and reset --soft before commit to avoid push rejection when layer builds have already pushed during the same trigger
 
 ## [unreleased] - 2026-04-11
