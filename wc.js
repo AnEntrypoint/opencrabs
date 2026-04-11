@@ -131,8 +131,9 @@ export function createSystem(id, opts) {
     spawnShell: async function(onData) {
       if (!worker || status !== 'ready') return null
       const { master, slave } = window.openpty()
-      new window.TtyServer(slave).start(worker, nwStack)
       onData({ xtermAddon: master })
+      await new Promise(r => setTimeout(r, 50))
+      new window.TtyServer(slave).start(worker, nwStack)
       return { input: new WritableStream({ write() {} }), exit: new Promise(() => {}), resize: () => {}, master }
     },
     destroy: function() {
