@@ -1,4 +1,5 @@
-## [unreleased] - 2026-04-11
+## [unreleased]
+- refactor(layers): redesign layers.json as mount descriptors with mountPath and tools array; remove chunk counts - 2026-04-11
 - refactor(vendor-xterm): download xterm@5.5.0, addon-fit@0.10.0, addon-canvas@0.7.0 UMD files to vendor/; embed xterm.css into styles.css; rewrite term-view.js to inject script tags from vendor paths and use window.Terminal/FitAddon/CanvasAddon globals; remove esm.sh dynamic imports
 - fix(systems-panel,wc): wire terminal cmd to WASM entrypoint; mountTerminal derives cmd array from term.cmd and passes to createSystem; createSystem passes opts.cmd to makeWorkerBlob so 'opencode', 'claude', etc. run as VM entrypoint instead of sh -i
 
