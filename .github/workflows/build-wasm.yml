@@ -1,42 +1,36 @@
-name: Build nodejs WASM
+name: build-wasm
 on:
-  workflow_dispatch:
   push:
     branches: [master]
-permissions:
-  contents: write
 jobs:
   build:
     if: github.actor != 'github-actions[bot]'
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
-      - name: Install c2w
+      - name: install c2w
         run: |
-          curl -L https://github.com/container2wasm/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz | tar xz
-          sudo mv c2w /usr/local/bin/
-      - name: Build WASM
-        env:
-          TMPDIR: /home/runner/tmp
+          curl -sSL https://github.com/ktock/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz | tar -xz
+          sudo mv c2w /usr/local/bin/c2w
+      - name: build alpine wasm
         run: |
-          mkdir -p /home/runner/tmp containers
-          c2w --build-arg=WASI_NET=browser node:23-alpine /home/runner/nodejs.wasm
-          split -b 50000000 /home/runner/nodejs.wasm /home/runner/nodejs_chunk_
-          i=0
-          for f in /home/runner/nodejs_chunk_*; do
-            printf -v n '%02d' $i
-            cp "$f" "containers/nodejs${n}.wasm"
-            i=$((i+1))
-          done
+          printf 'FROM alpine:3.20\nRUN apk update\n' > /tmp/Dockerfile
+          c2w --net=browser -f /tmp/Dockerfile scratch /tmp/alpine.wasm
+      - name: split wasm
+        run: |
+          rm -f containers/nodejs*.wasm
+          split -b 50M -a 2 -d /tmp/alpine.wasm /tmp/nodejs
+          for f in /tmp/nodejs??; do mv "$f" "containers/$(basename $f).wasm"; done
           ls containers/nodejs*.wasm | wc -l > containers/nodejs.chunks
-          echo "Built $(cat containers/nodejs.chunks) chunks"
-      - name: Commit and push
+      - name: commit
         run: |
-          git config user.email "actions@github.com"
-          git config user.name "GitHub Actions"
+          git config user.name github-actions
+          git config user.email github-actions@github.com
           git fetch origin master
           git reset --soft origin/master
           git restore --staged .
           git add containers/nodejs*.wasm containers/nodejs.chunks
-          git commit -m "build: node:23-alpine WASM chunks" || echo "nothing to commit"
+          git diff --cached --quiet || git commit -m "build: alpine WASM chunks"
           git push origin HEAD:master
