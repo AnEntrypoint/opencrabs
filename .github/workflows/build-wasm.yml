@@ -36,6 +36,7 @@ jobs:
           git config user.name "GitHub Actions"
           git fetch origin master
           git reset --soft origin/master
+          git restore --staged .
           git add containers/nodejs*.wasm containers/nodejs.chunks
           git commit -m "build: node:23-alpine WASM chunks" || echo "nothing to commit"
           git push origin HEAD:master
