@@ -94,7 +94,9 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const extraUrls = await fetchLayerUrls(opts.layers)
-        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls))
+        const mounts = opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]
+        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls, mounts))
+        worker.onmessage = function(e) { if (e.data && e.data.type === 'opfs-init') sys._onProgress && sys._onProgress(e.data) }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
         setStatus('ready')

@@ -1,4 +1,5 @@
 ## [unreleased]
+- feat(opfs): add OPFS-backed persistent filesystem in worker blob; OPFSOpenFile writes sync to OPFS via createSyncAccessHandle; default /root mount; progress messages {type:'opfs-init'} forwarded via wc.js onProgress
 - ci(build-wasm): switch to alpine:3.20 base WASM; remove build-layers.yml and all layer WASM/chunks from containers/
 - refactor(layers): redesign layers.json as mount descriptors with mountPath and tools array; remove chunk counts - 2026-04-11
 - refactor(vendor-xterm): download xterm@5.5.0, addon-fit@0.10.0, addon-canvas@0.7.0 UMD files to vendor/; embed xterm.css into styles.css; rewrite term-view.js to inject script tags from vendor paths and use window.Terminal/FitAddon/CanvasAddon globals; remove esm.sh dynamic imports

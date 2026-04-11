@@ -1,4 +1,4 @@
-export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], extraUrls = []) {
+export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], extraUrls = [], mounts = []) {
   const chunkUrls = [
     ...Array.from({ length: chunks }, (_, i) => imagePrefix + String(i).padStart(2, '0') + '.wasm'),
     ...extraUrls,
@@ -7,12 +7,64 @@ export function makeWorkerBlob(chunks, env, scripts, imagePrefix, cmd = ['-i'], 
   const src = preamble + `
 var ERRNO_INVAL = 28;
 var ERRNO_AGAIN = 6;
+var _opfsSyncHandles = new Map();
+async function opfsNavigate(p) {
+  if (!navigator.storage) throw new Error('OPFS unavailable');
+  var r = await navigator.storage.getDirectory();
+  for (var s of p.split('/').filter(Boolean)) r = await r.getDirectoryHandle(s, {create:true});
+  return r;
+}
+async function opfsWalk(dh, vp, out) {
+  out = out || {};
+  var es = [];
+  for await (var [n,h] of dh.entries()) es.push([n,h]);
+  postMessage({type:'opfs-init', path:vp, loaded:0, total:es.length});
+  for (var i=0; i<es.length; i++) {
+    var n=es[i][0], h=es[i][1];
+    if (h.kind === 'file') {
+      var sh = await (await dh.getFileHandle(n)).createSyncAccessHandle();
+      var buf = new Uint8Array(sh.getSize());
+      if (buf.length) sh.read(buf, {at:0});
+      var f = new File(buf); _opfsSyncHandles.set(f, sh); out[n] = f;
+    } else { out[n] = new Directory(await opfsWalk(h, vp+'/'+n)); }
+    postMessage({type:'opfs-init', path:vp, loaded:i+1, total:es.length});
+  }
+  return out;
+}
+class OPFSOpenFile extends OpenFile {
+  fd_write(m, v) {
+    var r = OpenFile.prototype.fd_write.call(this, m, v);
+    if (r.ret === 0) { var sh = _opfsSyncHandles.get(this.file); if (sh) { sh.truncate(0); sh.write(this.file.data, {at:0}); sh.flush(); } }
+    return r;
+  }
+}
+class OPFSPreopenDir extends PreopenDirectory {
+  constructor(n, c, dh) { super(n, c); this._dh = dh; }
+  path_open(df,p,of,fr,fi,ff) {
+    var r = PreopenDirectory.prototype.path_open.call(this,df,p,of,fr,fi,ff);
+    if (r.ret === 0 && r.fd_obj instanceof OpenFile) {
+      if (!_opfsSyncHandles.has(r.fd_obj.file)) {
+        var file = r.fd_obj.file, fname = p.split('/').pop(), dh = this._dh;
+        dh.getFileHandle(fname, {create:true}).then(function(fh) { return fh.createSyncAccessHandle(); }).then(function(sh) { _opfsSyncHandles.set(file, sh); });
+      }
+      var w = new OPFSOpenFile(r.fd_obj.file); w.file_pos = r.fd_obj.file_pos; return {ret:0, fd_obj:w};
+    }
+    return r;
+  }
+}
+async function opfsMounts(ms) {
+  var dirs = [];
+  for (var m of ms) { var dh = await opfsNavigate(m.opfsPath); dirs.push(new OPFSPreopenDir(m.vmPath, await opfsWalk(dh, m.vmPath), dh)); }
+  return dirs;
+}
+(async function() {
+var _mounts = await opfsMounts(${JSON.stringify(mounts)});
 onmessage = function(msg) {
   if (serveIfInitMsg(msg)) return;
   var ttyClient = new TtyClient(msg.data);
   recvCert().then(function(cert) {
     var certDir = getCertDir(cert);
-    var fds = [undefined, undefined, undefined, certDir, undefined, undefined];
+    var fds = [undefined, undefined, undefined, certDir, undefined, undefined].concat(_mounts);
     var args = ['arg0', '--net=socket=listenfd=4', '--mac', genmac(), '-entrypoint', '/bin/sh', '--'].concat(${JSON.stringify(cmd)});
     var env = ${JSON.stringify(env)};
     var urls = ${JSON.stringify(chunkUrls)};
@@ -33,6 +85,7 @@ onmessage = function(msg) {
     });
   });
 };
+})();
 function genmac() {
   return '02:XX:XX:XX:XX:XX'.replace(/X/g, function() {
     return '0123456789ABCDEF'.charAt(Math.floor(Math.random() * 16));
