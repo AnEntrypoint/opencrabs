@@ -97,6 +97,7 @@ jobs:
           git config user.name "GitHub Actions"
           git fetch origin master
           git reset --soft origin/master
+          git restore --staged .
           git add containers/
           git commit -m "build: layer WASMs and layers.json" || echo "nothing to commit"
           git push origin HEAD:master
