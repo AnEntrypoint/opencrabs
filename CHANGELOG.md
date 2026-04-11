@@ -1,3 +1,8 @@
+## [unreleased]
+
+### Fixed
+- fix(build-wasm): fetch origin/master and reset --soft before commit to avoid push rejection when layer builds have already pushed during the same trigger
+
 ## [unreleased] - 2026-04-11
 - feat(bridge-sw): cache WASM chunks in Cache Storage with version-keyed invalidation; invalidate on SW activate when nodejs.chunks or layers.json content changes
 - fix(build-layers): write-manifest job now fetches origin/master and resets --soft before committing to avoid ref lock failures on force-push during concurrent long-running builds
