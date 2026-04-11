@@ -1,4 +1,7 @@
 ## [unreleased]
+- fix(wasm-cache): move WASM fetch to main thread with explicit Cache API cache-first; blob Workers have null origin and bypass SW; fetched ArrayBuffers transferred to Worker eliminating duplicate download; SW WASM cache now populates correctly on first boot
+- fix(sw): add invalidateOnVersionChange to install handler; change SW bytes to force browser re-install; add await to cache.put in .wasm handler
+- fix(header): add stable id to terminal status chip to prevent webjsx applyDiff from setting id=undefined
 - fix(containers): delete stale nodejs03-05.wasm from remote master (leftover from old node:23-alpine CI build; current alpine:3.20 produces only 3 chunks nodejs00-02)
 - fix(serve): add .wasm MIME type to bin/serve.js so local dev server serves WASM with application/wasm content-type
 
