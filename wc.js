@@ -94,7 +94,7 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const extraUrls = await fetchLayerUrls(opts.layers)
-        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, ['-i'], extraUrls))
+        worker = new Worker(makeWorkerBlob(chunks, SHELL_ENV, [workerTools, ...sharedScripts], absImagePrefix, opts.cmd || ['-i'], extraUrls))
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
         setStatus('ready')
