@@ -17,7 +17,7 @@ jobs:
       - name: build alpine wasm
         run: |
           printf 'FROM alpine:3.20\nRUN apk update\n' > /tmp/Dockerfile
-          c2w --net=browser --dockerfile /tmp/Dockerfile alpine:3.20 /tmp/alpine.wasm
+          c2w --dockerfile /tmp/Dockerfile alpine:3.20 /tmp/alpine.wasm
       - name: split wasm
         run: |
           rm -f containers/nodejs*.wasm
