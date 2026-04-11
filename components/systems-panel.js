@@ -6,7 +6,9 @@ const CMDS = ['sh -i', 'opencode', 'claude', 'kilo', 'codex']
 
 let _layers = []
 async function fetchLayers() {
-  try { const r = await fetch('./containers/layers.json'); if (r.ok) _layers = await r.json() } catch {}
+  const r = await fetch('./containers/layers.json')
+  if (!r.ok) throw new Error('layers.json fetch failed: ' + r.status)
+  _layers = await r.json()
 }
 
 const _termSystems = new Map()
