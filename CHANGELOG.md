@@ -1,6 +1,7 @@
 ## [unreleased]
 - fix(wc): delay TtyServer.start 50ms after PTY addon load to prevent CPR escape codes (^[[1;5R) in stdin — xterm sends ESC[6n cursor position request on init; response flows PTY→WASM stdin before shell ready; fix: onData({xtermAddon:master}) first, then 50ms, then TtyServer.start
 - ci(build-layers): add matrix workflow to build opencode/claude/kilo/codex layer WASMs via c2w from node:23-alpine + bun + pkg; splits at 50MB; commits layer-{id}*.wasm + layer-{id}.chunks per matrix job; continue-on-error per job; skips bot actor
+- fix(build-layers): retry push loop (5 attempts, exponential backoff) in commit step to handle concurrent matrix job push collisions; all 4 layers validated deployed: opencode=29 chunks, claude=18, kilo=33, codex=20
 
 ## [unreleased]
 - fix(wc-workers): buffer messages during OPFS init — onmessage=null silently dropped {type:'init'} from newStack; streamCtrl never set; recvCert() hung; WASM never started; fix: _pending buffer replays all messages after opfsMounts resolves
