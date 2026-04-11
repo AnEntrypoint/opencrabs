@@ -1,33 +1,28 @@
-const XTERM = 'https://esm.sh/@xterm/xterm@5.5.0'
-const XTERM_FIT = 'https://esm.sh/@xterm/addon-fit@0.10.0'
-const XTERM_CANVAS = 'https://esm.sh/@xterm/addon-canvas@0.7.0'
-const XTERM_CSS = 'https://esm.sh/@xterm/xterm@5.5.0/css/xterm.css'
-
-let _cssLoaded = false
-async function loadCss() {
-  if (_cssLoaded) return
-  _cssLoaded = true
-  await new Promise(resolve => {
-    const l = document.createElement('link')
-    l.rel = 'stylesheet'; l.href = XTERM_CSS
-    l.onload = resolve; l.onerror = resolve
-    document.head.appendChild(l)
-  })
+let _scriptsLoaded = false
+async function loadScripts() {
+  if (_scriptsLoaded) return
+  _scriptsLoaded = true
+  for (const src of ['./vendor/xterm.js', './vendor/addon-fit.js', './vendor/addon-canvas.js']) {
+    await new Promise((resolve, reject) => {
+      const s = document.createElement('script')
+      s.src = src
+      s.onload = resolve
+      s.onerror = reject
+      document.head.appendChild(s)
+    })
+  }
 }
 
 export async function mount(el, sys) {
-  await loadCss()
-  const [{ Terminal }, { FitAddon }, { CanvasAddon }] = await Promise.all([
-    import(XTERM), import(XTERM_FIT), import(XTERM_CANVAS)
-  ])
+  await loadScripts()
   const cs = getComputedStyle(document.documentElement)
   const bg = cs.getPropertyValue('--background').trim() || '#0d0f14'
   const fg = cs.getPropertyValue('--foreground').trim() || '#e8e8e8'
-  const term = new Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: bg, foreground: fg } })
-  const fit = new FitAddon()
+  const term = new window.Terminal({ cursorBlink: true, fontSize: 13, fontFamily: 'monospace', theme: { background: bg, foreground: fg } })
+  const fit = new window.FitAddon()
   term.loadAddon(fit)
   term.open(el)
-  term.loadAddon(new CanvasAddon())
+  term.loadAddon(new window.CanvasAddon())
   const ro = new ResizeObserver(() => fit.fit())
   ro.observe(el)
   requestAnimationFrame(() => fit.fit())
