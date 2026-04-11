@@ -1,4 +1,8 @@
 ## [unreleased]
+- fix(containers): delete stale nodejs03-05.wasm from remote master (leftover from old node:23-alpine CI build; current alpine:3.20 produces only 3 chunks nodejs00-02)
+- fix(serve): add .wasm MIME type to bin/serve.js so local dev server serves WASM with application/wasm content-type
+
+## [unreleased]
 - feat(systems-panel-progress): wasm-progress postMessage per chunk in worker; forwarded via _onProgress; xterm shows cyan "Loading WASM N/M" vs yellow opfs progress
 - feat(systems-panel-progress): term-view shows "Booting..." then writes \r-overwriting progress lines for opfs-init and desktop-init events; clears after boot; wc-workers-desktop.js: remove unused _desktopVmPaths dead code
 - feat(desktop-fs): add desktop FileSystem mount; showDirectoryPicker in New System dialog (hidden when API unavailable); desktopWalk loads dir tree into RAM via getFile().arrayBuffer(); DesktopOpenFile/DesktopPreopenDir classes with write-back via desktop-write postMessage; worker pre-init desktop-handles rendezvous; wc-workers-desktop.js splits desktop blob src; wc.js posts handles before TtyClient init and flushes writes via createWritable; backward-compat: OPFS mounts unchanged
