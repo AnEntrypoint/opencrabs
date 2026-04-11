@@ -1,4 +1,8 @@
 ## [unreleased]
+- fix(wc): delay TtyServer.start 50ms after PTY addon load to prevent CPR escape codes (^[[1;5R) in stdin — xterm sends ESC[6n cursor position request on init; response flows PTY→WASM stdin before shell ready; fix: onData({xtermAddon:master}) first, then 50ms, then TtyServer.start
+- ci(build-layers): add matrix workflow to build opencode/claude/kilo/codex layer WASMs via c2w from node:23-alpine + bun + pkg; splits at 50MB; commits layer-{id}*.wasm + layer-{id}.chunks per matrix job; continue-on-error per job; skips bot actor
+
+## [unreleased]
 - fix(wc-workers): buffer messages during OPFS init — onmessage=null silently dropped {type:'init'} from newStack; streamCtrl never set; recvCert() hung; WASM never started; fix: _pending buffer replays all messages after opfsMounts resolves
 - fix(wasm-cache): move WASM fetch to main thread with explicit Cache API cache-first; blob Workers have null origin and bypass SW; fetched ArrayBuffers transferred to Worker eliminating duplicate download; SW WASM cache now populates correctly on first boot
 - fix(sw): add invalidateOnVersionChange to install handler; change SW bytes to force browser re-install; add await to cache.put in .wasm handler
