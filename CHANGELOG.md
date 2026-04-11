@@ -1,3 +1,6 @@
+## [unreleased] - 2026-04-11
+- fix(systems-panel,wc): wire terminal cmd to WASM entrypoint; mountTerminal derives cmd array from term.cmd and passes to createSystem; createSystem passes opts.cmd to makeWorkerBlob so 'opencode', 'claude', etc. run as VM entrypoint instead of sh -i
+
 ## [unreleased]
 
 ### Fixed
