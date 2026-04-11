@@ -17,14 +17,16 @@ jobs:
       - name: build alpine wasm
         run: |
           printf 'FROM alpine:3.20\nRUN apk update\n' > Dockerfile.alpine
-          c2w --build-arg=WASI_NET=browser --dockerfile Dockerfile.alpine alpine:3.20 alpine.wasm
+          mkdir -p wasm-out
+          c2w --build-arg=WASI_NET=browser --dockerfile Dockerfile.alpine alpine:3.20 wasm-out/alpine.wasm
+          ls -la wasm-out/
       - name: split wasm
         run: |
           rm -f containers/nodejs*.wasm
-          split -b 50M -a 2 -d alpine.wasm nodejs_chunk_
+          split -b 50M -a 2 -d wasm-out/alpine.wasm nodejs_chunk_
           for f in nodejs_chunk_??; do mv "$f" "containers/$(echo $f | sed 's/nodejs_chunk_/nodejs/').wasm"; done
           ls containers/nodejs*.wasm | wc -l > containers/nodejs.chunks
-          rm -f Dockerfile.alpine alpine.wasm
+          rm -rf Dockerfile.alpine wasm-out
       - name: commit
         run: |
           git config user.name github-actions
