@@ -1,4 +1,5 @@
 ## [unreleased]
+- fix(build-layers): opencode uses multi-stage Dockerfile — npm install in node:23-alpine build stage, COPY binary to alpine:3.20 final stage; eliminates node/npm from final image (~700 MB savings); other layers add npm cache clean --force; opencode WASM target <1 GB
 - fix(wc): add /root/.bun/bin to PATH in SHELL_ENV so bun-installed binaries (claude, opencode, kilo, codex) are found when layer WASM built with bun install -g
 - fix(build-layers): remove bun from layer Dockerfile; all packages support npm postinstall fallback; opencode-ai ships prebuilt musl binary (155 MB) so bun runtime not needed; drops WASM from 1.511 GB to ~855 MB, under Chrome 1 GB WebAssembly module size limit
 - fix(systems-panel): fix cmd construction — remove leading 'sh' from cmd array; WASM entrypoint is already /bin/sh via -entrypoint flag; ['sh','-c','exec opencode'] caused sh to try to open a file named 'sh'; fix: ['-c','exec opencode']
