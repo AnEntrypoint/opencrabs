@@ -84,7 +84,7 @@ export function createSystem(id, opts) {
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const _layerResult = await installLayerBinaries(opts.layers || [])
         const { mounts: _lm, idbMounts, extraPaths } = _layerResult
-const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
+        const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
         let pi = 0
         const wasmBuffers = []
         for (let bi = 0; bi < allChunkUrls.length; bi += 4) {
@@ -116,7 +116,7 @@ const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + S
         worker.onmessage = function(e) {
           const d = e.data; if (!d) return
           if (d.type === 'opfs-init' || d.type === 'desktop-init' || d.type === 'wasm-progress') { sys._onProgress && sys._onProgress(d); return }
-if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
+          if (d.type === 'desktop-write') { d.dh.getFileHandle(d.name, {create:true}).then(fh => fh.createWritable()).then(w => w.write(new Uint8Array(d.data)).then(() => w.close())).catch(e => console.error('desktop-write flush failed:', e)) }
         }
         stackWorker = new Worker(makeStackWorkerBlob(stackSrc, sharedScripts))
         nwStack = window.newStack(worker, IMAGE_PREFIX, chunks, stackWorker, DEMO_BASE + '/src/c2w-net-proxy.wasm')
