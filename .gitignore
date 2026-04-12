@@ -4,3 +4,6 @@ node_modules/
 *.png
 .prd.claude/
 .claude/
+.prd
+.codeinsight
+.plugkit-browser-profile/
