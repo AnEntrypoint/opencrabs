@@ -30,7 +30,7 @@ jobs:
         run: |
           mkdir -p workspace
           if [ "${{ matrix.id }}" = "opencode" ]; then
-            printf 'FROM node:23-alpine AS build\nRUN npm install -g ${{ matrix.pkg }} --no-fund --no-audit && npm cache clean --force\nFROM alpine:3.20\nCOPY --from=build /usr/local/bin/opencode /usr/local/bin/opencode\n' > workspace/Dockerfile
+            printf 'FROM node:23-alpine AS build\nRUN npm install -g ${{ matrix.pkg }} --no-fund --no-audit && npm cache clean --force\nFROM alpine:3.20\nCOPY --from=build /usr/local/lib/node_modules/opencode-ai/ /usr/local/lib/node_modules/opencode-ai/\nCOPY --from=build /usr/local/bin/opencode /usr/local/bin/opencode\n' > workspace/Dockerfile
           else
             printf 'FROM node:23-alpine\nRUN npm install -g ${{ matrix.pkg }} --no-fund --no-audit && npm cache clean --force\n' > workspace/Dockerfile
           fi
