@@ -1,4 +1,7 @@
 ## [unreleased]
+- feat(wc): replace layer WASM concatenation with OPFS binary install — layers.json gains binaryUrl/binaryName/binaryVmPath; wc-layer-install.js fetches tgz from CDN, extracts binary via streaming tar parser with DecompressionStream, writes to OPFS tools/{id}/; mounts OPFS dir at binaryVmPath and prepends to PATH per system; no layer WASMs needed
+- fix(build-layers): disable build-layers.yml workflow (layer WASMs superseded by OPFS binary install)
+- fix(build-layers): multi-stage opencode Dockerfile — alpine:3.20 final with only musl binary, no node/npm; WASM_MEM_SIZE=536870912 for opencode c2w; other layers use node:23-alpine single-stage; minimizes opencode WASM image size
 - fix(wc): filter CPR escape sequences (ESC[row;colR) from pty slave.read() via regex proxy — prevents ^[[N;5R terminal pollution on xterm init for perfect PTY emulation
 - fix(build-layers): add --no-cache to docker build to prevent Docker layer cache reuse causing stale npm install (opencode layer was 3 chunks instead of expected 8+)
 - validated: opencode layer (3 chunks, alpine:3.20 multi-stage) boots in browser WASM terminal — 6146 bright pixels with ANSI colors (cyan, white, amber) confirmed via xterm-text-layer canvas; claude layer (7 chunks, node:23-alpine) boots sh -i, responds to echo, claude --version produces 5191 bright pixels / 69 rows of output confirming claude-code binary runs inside WASM VM

@@ -3,6 +3,9 @@
     "id": "opencode",
     "label": "OpenCode AI",
     "mountPath": "/root/.config/opencode",
+    "binaryUrl": "https://github.com/anomalyco/opencode/releases/download/v1.4.3/opencode-linux-x64-musl.tar.gz",
+    "binaryName": "opencode",
+    "binaryVmPath": "/opt/opencode",
     "tools": [
       {
         "name": "opencode-ai",
@@ -19,7 +22,7 @@
       {
         "name": "@anthropic-ai/claude-code",
         "url": "https://www.npmjs.com/package/@anthropic-ai/claude-code",
-        "installCmd": "bun install -g @anthropic-ai/claude-code"
+        "installCmd": "npm install -g @anthropic-ai/claude-code"
       }
     ]
   },
@@ -31,7 +34,7 @@
       {
         "name": "@kilocode/cli",
         "url": "https://www.npmjs.com/package/@kilocode/cli",
-        "installCmd": "bun install -g @kilocode/cli"
+        "installCmd": "npm install -g @kilocode/cli"
       }
     ]
   },
@@ -43,7 +46,7 @@
       {
         "name": "@openai/codex",
         "url": "https://www.npmjs.com/package/@openai/codex",
-        "installCmd": "bun install -g @openai/codex"
+        "installCmd": "npm install -g @openai/codex"
       }
     ]
   }

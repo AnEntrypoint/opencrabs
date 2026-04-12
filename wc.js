@@ -1,4 +1,5 @@
 import { makeWorkerBlob, makeStackWorkerBlob } from './wc-workers.js'
+import { installLayerBinaries } from './wc-layer-install.js'
 
 const DEMO_BASE = 'https://ktock.github.io/container2wasm-demo'
 const XTERM_PTY_CDN = './vendor'
@@ -63,18 +64,6 @@ export function bootAssets() {
   return _assetsPromise
 }
 
-async function fetchLayerUrls(layers) {
-  if (!layers || !layers.length) return []
-  const urls = []
-  for (const layerId of layers) {
-    const r = await fetch('./containers/layer-' + layerId + '.chunks')
-    if (!r.ok) throw new Error('layer chunks missing: ' + layerId + ' ' + r.status)
-    const n = parseInt((await r.text()).trim(), 10)
-    const abs = new URL('./containers/layer-' + layerId, location.href).href
-    for (let i = 0; i < n; i++) urls.push(abs + String(i).padStart(2, '0') + '.wasm')
-  }
-  return urls
-}
 
 export function createSystem(id, opts) {
   opts = opts || {}
@@ -93,9 +82,9 @@ export function createSystem(id, opts) {
       try {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
-        const extraUrls = await fetchLayerUrls(opts.layers)
-        const baseUrls = extraUrls.length ? [] : Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
-        const allChunkUrls = [...baseUrls, ...extraUrls]
+        const _layerResult = await installLayerBinaries(opts.layers || [])
+        const { mounts: _lm, extraPaths } = _layerResult
+        const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
         let pi = 0
         const wasmBuffers = []
         for (let bi = 0; bi < allChunkUrls.length; bi += 4) {
@@ -114,10 +103,11 @@ export function createSystem(id, opts) {
           }))
           wasmBuffers.push(...bufs)
         }
-        const mounts = opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]
+        const mounts = [...(opts.mounts || [{vmPath:'/root', opfsPath:'home/root'}]), ...(_lm || [])]
         const blobMounts = mounts.map(m => m.desktopHandle ? {vmPath:m.vmPath, type:'desktop'} : m)
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
-        worker = new Worker(makeWorkerBlob(SHELL_ENV, [workerTools, ...sharedScripts], opts.cmd || ['-i'], blobMounts))
+        const _env = extraPaths && extraPaths.length ? SHELL_ENV.map(e => e.startsWith('PATH=') ? 'PATH=' + extraPaths.join(':') + ':' + e.slice(5) : e) : SHELL_ENV
+        worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], opts.cmd || ['-i'], blobMounts))
         worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
         worker.postMessage({type:'desktop-handles', handles:desktopHandles, wasmBuffers}, wasmBuffers)
         worker.onmessage = function(e) {

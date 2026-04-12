@@ -4,7 +4,7 @@ on:
     branches: [master]
 jobs:
   build-layer:
-    if: github.actor != 'github-actions[bot]'
+    if: 'false'
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -21,42 +21,4 @@ jobs:
             pkg: "@openai/codex"
       fail-fast: false
     steps:
-      - uses: actions/checkout@v4
-      - name: install c2w
-        run: |
-          curl -sSL https://github.com/ktock/container2wasm/releases/download/v0.8.4/container2wasm-v0.8.4-linux-amd64.tar.gz | tar -xz
-          sudo mv c2w /usr/local/bin/c2w
-      - name: build layer wasm
-        run: |
-          mkdir -p workspace
-          if [ "${{ matrix.id }}" = "opencode" ]; then
-            printf 'FROM node:23-alpine AS build\nRUN npm install -g opencode-ai --no-fund --no-audit && npm cache clean --force\nFROM alpine:3.20\nCOPY --from=build /usr/local/lib/node_modules/opencode-ai/node_modules/opencode-linux-x64-musl/bin/opencode /usr/local/bin/opencode\n' > workspace/Dockerfile
-            docker build --no-cache -t layer-${{ matrix.id }}:latest workspace/
-            c2w --build-arg=WASI_NET=browser --build-arg=WASM_MEM_SIZE=536870912 layer-${{ matrix.id }}:latest workspace/out.wasm
-          else
-            printf 'FROM node:23-alpine\nRUN npm install -g ${{ matrix.pkg }} --no-fund --no-audit && npm cache clean --force\n' > workspace/Dockerfile
-            docker build --no-cache -t layer-${{ matrix.id }}:latest workspace/
-            c2w --build-arg=WASI_NET=browser layer-${{ matrix.id }}:latest workspace/out.wasm
-          fi
-          ls -la workspace/out.wasm
-      - name: split wasm
-        run: |
-          rm -f containers/layer-${{ matrix.id }}*.wasm
-          split -b 50M -a 2 -d workspace/out.wasm layer_chunk_
-          for f in layer_chunk_??; do mv "$f" "containers/layer-${{ matrix.id }}$(echo $f | sed 's/layer_chunk_//').wasm"; done
-          ls containers/layer-${{ matrix.id }}*.wasm | wc -l > containers/layer-${{ matrix.id }}.chunks
-          rm -rf workspace
-      - name: commit
-        run: |
-          git config user.name github-actions
-          git config user.email github-actions@github.com
-          for i in 1 2 3 4 5; do
-            git fetch origin master
-            git reset --soft origin/master
-            git restore --staged .
-            git add "containers/layer-${{ matrix.id }}"*.wasm "containers/layer-${{ matrix.id }}.chunks"
-            git diff --cached --quiet || git commit -m "build: ${{ matrix.id }} layer WASM chunks"
-            git push origin HEAD:master && break
-            echo "push failed, retrying ($i)..."
-            sleep $(($i * 5))
-          done
+      - run: echo disabled
