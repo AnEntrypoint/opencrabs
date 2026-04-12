@@ -29,7 +29,7 @@ jobs:
       - name: build layer wasm
         run: |
           mkdir -p workspace
-          printf 'FROM node:23-alpine\nRUN npm install -g bun || (apk add --no-cache curl unzip && curl -fsSL https://bun.sh/install | bash && ln -s /root/.bun/bin/bun /usr/local/bin/bun)\nRUN bun install -g ${{ matrix.pkg }}\n' > workspace/Dockerfile
+          printf 'FROM node:23-alpine\nRUN npm install -g ${{ matrix.pkg }}\n' > workspace/Dockerfile
           docker build -t layer-${{ matrix.id }}:latest workspace/
           c2w --build-arg=WASI_NET=browser layer-${{ matrix.id }}:latest workspace/out.wasm
           ls -la workspace/out.wasm

@@ -1,4 +1,5 @@
 ## [unreleased]
+- fix(build-layers): remove bun from layer Dockerfile; all packages support npm postinstall fallback; opencode-ai ships prebuilt musl binary (155 MB) so bun runtime not needed; drops WASM from 1.511 GB to ~855 MB, under Chrome 1 GB WebAssembly module size limit
 - fix(systems-panel): fix cmd construction — remove leading 'sh' from cmd array; WASM entrypoint is already /bin/sh via -entrypoint flag; ['sh','-c','exec opencode'] caused sh to try to open a file named 'sh'; fix: ['-c','exec opencode']
 - fix(wc-workers): use WebAssembly.compileStreaming(fetch(blobUrl)) instead of WebAssembly.instantiate(buffer) — compileStreaming bypasses Chrome's 1 GB buffer limit; opencode WASM alone is 1.51 GB which exceeds instantiate() max; blob URL created from merged Uint8Array, revoked after compile
 - fix(wc): skip nodejs base chunks when layer extraUrls present — layer WASMs (built from node:23-alpine) include node; concatenating base+layer = 1.62 GB, exceeding Chrome's 1 GB WebAssembly.instantiate() limit; fix: baseUrls=[] when extraUrls.length>0
