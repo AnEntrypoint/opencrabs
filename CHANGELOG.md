@@ -1,4 +1,6 @@
 ## [unreleased]
+- fix(wc): filter CPR escape sequences (ESC[row;colR) from pty slave.read() via regex proxy — prevents ^[[N;5R terminal pollution on xterm init for perfect PTY emulation
+- fix(build-layers): add --no-cache to docker build to prevent Docker layer cache reuse causing stale npm install (opencode layer was 3 chunks instead of expected 8+)
 - validated: opencode layer (3 chunks, alpine:3.20 multi-stage) boots in browser WASM terminal — 6146 bright pixels with ANSI colors (cyan, white, amber) confirmed via xterm-text-layer canvas; claude layer (7 chunks, node:23-alpine) boots sh -i, responds to echo, claude --version produces 5191 bright pixels / 69 rows of output confirming claude-code binary runs inside WASM VM
 - fix(build-layers): opencode uses multi-stage Dockerfile — npm install in node:23-alpine build stage, COPY binary to alpine:3.20 final stage; eliminates node/npm from final image (~700 MB savings); other layers add npm cache clean --force; opencode WASM target <1 GB
 - fix(wc): add /root/.bun/bin to PATH in SHELL_ENV so bun-installed binaries (claude, opencode, kilo, codex) are found when layer WASM built with bun install -g
