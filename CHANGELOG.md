@@ -1,4 +1,7 @@
 ## [unreleased]
+- fix(layers): pass layer binaries as transferables to worker instead of re-opening IDB — blob: URL workers have null origin; indexedDB.open('opencrabs-layers') in worker accessed null-origin IDB (not main page's http://127.0.0.1:7071 IDB); layer binary was never found; fix: read binary from IDB in main page context via idbGet(), pass as layerBuffers ArrayBuffer transferable alongside wasmBuffers in desktop-handles message; worker uses _init.layerBuffers directly; idbGet exported from wc-layer-install.js
+
+## [unreleased]
 - feat(wc): replace layer WASM concatenation with OPFS binary install — layers.json gains binaryUrl/binaryName/binaryVmPath; wc-layer-install.js fetches tgz from CDN, extracts binary via streaming tar parser with DecompressionStream, writes to OPFS tools/{id}/; mounts OPFS dir at binaryVmPath and prepends to PATH per system; no layer WASMs needed
 - fix(build-layers): disable build-layers.yml workflow (layer WASMs superseded by OPFS binary install)
 - fix(build-layers): multi-stage opencode Dockerfile — alpine:3.20 final with only musl binary, no node/npm; WASM_MEM_SIZE=536870912 for opencode c2w; other layers use node:23-alpine single-stage; minimizes opencode WASM image size
