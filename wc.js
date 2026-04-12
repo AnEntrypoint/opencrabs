@@ -9,7 +9,7 @@ const STACK_WORKER_URL = './wc-stack-worker.js'
 const SHELL_ENV = [
   'HOME=/root', 'TERM=xterm-256color', 'USER=root', 'SHELL=/bin/sh',
   'LANG=en_US.UTF-8', 'LC_ALL=C',
-  'PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
+  'PATH=/root/.bun/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin',
   'https_proxy=http://192.168.127.253:80',
   'http_proxy=http://192.168.127.253:80',
   'HTTPS_PROXY=http://192.168.127.253:80',
