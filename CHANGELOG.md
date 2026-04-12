@@ -1,4 +1,5 @@
 ## [unreleased]
+- fix(wc-workers): use WebAssembly.compileStreaming(fetch(blobUrl)) instead of WebAssembly.instantiate(buffer) — compileStreaming bypasses Chrome's 1 GB buffer limit; opencode WASM alone is 1.51 GB which exceeds instantiate() max; blob URL created from merged Uint8Array, revoked after compile
 - fix(wc): skip nodejs base chunks when layer extraUrls present — layer WASMs (built from node:23-alpine) include node; concatenating base+layer = 1.62 GB, exceeding Chrome's 1 GB WebAssembly.instantiate() limit; fix: baseUrls=[] when extraUrls.length>0
 - fix(wc): fetch WASM chunks in batches of 4 instead of all-concurrent Promise.all — prevents ERR_FAILED on GH Pages when 32×50MB requests fire simultaneously
 - fix(wc): delay TtyServer.start 50ms after PTY addon load to prevent CPR escape codes (^[[1;5R) in stdin — xterm sends ESC[6n cursor position request on init; response flows PTY→WASM stdin before shell ready; fix: onData({xtermAddon:master}) first, then 50ms, then TtyServer.start

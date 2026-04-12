@@ -85,8 +85,11 @@ function _realHandler(msg) {
       var wasi = new WASI(args, env, fds);
       wasiHack(wasi, ttyClient, 5);
       wasiHackSocket(wasi, 4, 5);
-      WebAssembly.instantiate(merged, { 'wasi_snapshot_preview1': wasi.wasiImport })
-        .then(function(inst) { wasi.start(inst.instance); });
+      var wasmBlob = new Blob([merged], { type: 'application/wasm' });
+      var wasmUrl = URL.createObjectURL(wasmBlob);
+      WebAssembly.compileStreaming(fetch(wasmUrl))
+        .then(function(mod) { URL.revokeObjectURL(wasmUrl); return WebAssembly.instantiate(mod, { 'wasi_snapshot_preview1': wasi.wasiImport }); })
+        .then(function(inst) { wasi.start(inst); });
     });
   });
 }
