@@ -1,4 +1,9 @@
 ## [unreleased]
+- fix(build-wasm): add VM_MEMORY_SIZE_MB=512 to c2w build — default 115MB Linux VM RAM is too small for opencode's 162MB musl binary (OOM/Killed); 512MB VM memory allows opencode to load and execute
+- fix(layers): replace WASM layer concatenation with OPFS binary install — fetch opencode musl binary from npmjs tgz, extract via streaming tar parser, write to OPFS /root/.local/bin; fetch Alpine GCC 15 libgcc_s.so.1 + libstdc++.so.6 to /root/.local/lib; set LD_LIBRARY_PATH and prepend PATH; WASM patches for OPFS file execute permissions (S_IFREG|0755)
+- fix(layers): upgrade libgcc/libstdc++ to Alpine edge GCC 15.2.0 — opencode binary compiled with GCC 15 (Alpine edge), GCC 13 libs caused symbol mismatch; replace containers/libgcc_s.so.1 + libstdc++.so.6 with Alpine edge GCC 15.2.0-r3 packages
+
+## [unreleased]
 - fix(layers): pass layer binaries as transferables to worker instead of re-opening IDB — blob: URL workers have null origin; indexedDB.open('opencrabs-layers') in worker accessed null-origin IDB (not main page's http://127.0.0.1:7071 IDB); layer binary was never found; fix: read binary from IDB in main page context via idbGet(), pass as layerBuffers ArrayBuffer transferable alongside wasmBuffers in desktop-handles message; worker uses _init.layerBuffers directly; idbGet exported from wc-layer-install.js
 
 ## [unreleased]

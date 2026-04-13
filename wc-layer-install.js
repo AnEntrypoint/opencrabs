@@ -27,52 +27,55 @@ async function extractBinaryFromTgz(url, binaryName) {
   throw new Error('binary not found in tgz: ' + binaryName)
 }
 
-function idbLayerDb() {
-  return new Promise((resolve, reject) => {
-    const req = indexedDB.open('opencrabs-layers', 1)
-    req.onupgradeneeded = e => { e.target.result.createObjectStore('layer-binaries') }
-    req.onsuccess = () => resolve(req.result)
-    req.onerror = () => reject(req.error)
-  })
+async function fetchBytes(url) {
+  const r = await fetch(url)
+  if (!r.ok) throw new Error('fetch failed: ' + url + ' ' + r.status)
+  return new Uint8Array(await r.arrayBuffer())
 }
 
-function idbPut(key, value) {
-  return idbLayerDb().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction('layer-binaries', 'readwrite')
-    tx.objectStore('layer-binaries').put(value, key)
-    tx.oncomplete = () => { db.close(); resolve() }
-    tx.onerror = () => { db.close(); reject(tx.error) }
-  }))
-}
-
-export function idbGet(key) {
-  return idbLayerDb().then(db => new Promise((resolve, reject) => {
-    const tx = db.transaction('layer-binaries', 'readonly')
-    const r2 = tx.objectStore('layer-binaries').get(key)
-    r2.onsuccess = () => { db.close(); resolve(r2.result) }
-    r2.onerror = () => { db.close(); reject(r2.error) }
-  }))
+async function writeToOpfs(dirHandle, name, bytes) {
+  const fh = await dirHandle.getFileHandle(name, {create:true})
+  const w = await fh.createWritable()
+  await w.write(bytes)
+  await w.close()
 }
 
 export async function installLayerBinaries(layerIds) {
-  if (!layerIds || !layerIds.length) return { mounts: [], idbMounts: [], extraPaths: [] }
+  if (!layerIds || !layerIds.length) return { mounts: [], extraPaths: [] }
   const r = await fetch('./containers/layers.json')
   if (!r.ok) throw new Error('layers.json fetch failed: ' + r.status)
   const all = await r.json()
-  const mounts = [], idbMounts = [], extraPaths = []
+  const root = await navigator.storage.getDirectory()
+  const homeRoot = await root.getDirectoryHandle('home', {create:true})
+    .then(h => h.getDirectoryHandle('root', {create:true}))
+  const localDir = await homeRoot.getDirectoryHandle('.local', {create:true})
+  const binHandle = await localDir.getDirectoryHandle('bin', {create:true})
+  const libHandle = await localDir.getDirectoryHandle('lib', {create:true})
+  let hasLibs = false
   for (const id of layerIds) {
     const layer = all.find(l => l.id === id)
-    if (!layer || !layer.binaryUrl || !layer.binaryName) continue
-    const idbKey = 'layer:' + id + ':' + layer.binaryName
-    let existing = await idbGet(idbKey)
-    if (!existing) {
-      const bytes = await extractBinaryFromTgz(layer.binaryUrl, layer.binaryName)
-      await idbPut(idbKey, bytes.buffer)
-      existing = bytes.buffer
+    if (!layer) continue
+    if (layer.binaryUrl && layer.binaryName) {
+      let exists = false
+      try { await binHandle.getFileHandle(layer.binaryName); exists = true } catch(e) {}
+      if (!exists) {
+        const bytes = await extractBinaryFromTgz(layer.binaryUrl, layer.binaryName)
+        await writeToOpfs(binHandle, layer.binaryName, bytes)
+      }
     }
-    const vmPath = '/opt/' + id
-    extraPaths.push(vmPath)
-    idbMounts.push({ vmPath, idbKey, binaryName: layer.binaryName })
+    if (layer.libs && layer.libs.length) {
+      for (const lib of layer.libs) {
+        let exists = false
+        try { await libHandle.getFileHandle(lib.name); exists = true } catch(e) {}
+        if (!exists) {
+          const bytes = await fetchBytes(lib.url)
+          await writeToOpfs(libHandle, lib.name, bytes)
+        }
+        hasLibs = true
+      }
+    }
   }
-  return { mounts, idbMounts, extraPaths }
+  const extraPaths = ['/root/.local/bin']
+  const extraLibPaths = hasLibs ? ['/root/.local/lib'] : []
+  return { mounts: [], extraPaths, extraLibPaths }
 }

@@ -5,6 +5,10 @@
     "mountPath": "/root/.config/opencode",
     "binaryUrl": "https://registry.npmjs.org/opencode-linux-x64-musl/-/opencode-linux-x64-musl-1.4.3.tgz",
     "binaryName": "opencode",
+    "libs": [
+      {"url": "./containers/libgcc_s.so.1", "name": "libgcc_s.so.1"},
+      {"url": "./containers/libstdc++.so.6", "name": "libstdc++.so.6"}
+    ],
     "tools": [
       {
         "name": "opencode-ai",

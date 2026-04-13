@@ -16,7 +16,7 @@ jobs:
           sudo mv c2w /usr/local/bin/c2w
       - name: build alpine wasm
         run: |
-          c2w --build-arg=WASI_NET=browser alpine:3.20 out.wasm
+          c2w --build-arg=WASI_NET=browser --build-arg=VM_MEMORY_SIZE_MB=512 alpine:3.20 out.wasm
           ls -la out.wasm
       - name: split wasm
         run: |
