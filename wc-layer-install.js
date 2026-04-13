@@ -44,6 +44,7 @@ export async function installLayerBinaries(layerIds) {
     .then(h => h.getDirectoryHandle('root', {create:true}))
   const localDir = await homeRoot.getDirectoryHandle('.local', {create:true})
   const binHandle = await localDir.getDirectoryHandle('bin', {create:true})
+  const extraEnv = []
   for (const id of layerIds) {
     const layer = all.find(l => l.id === id)
     if (!layer) continue
@@ -55,6 +56,7 @@ export async function installLayerBinaries(layerIds) {
         await writeToOpfs(binHandle, layer.binaryName, bytes)
       }
     }
+    if (layer.extraEnv) extraEnv.push(...layer.extraEnv)
   }
-  return { mounts: [], extraPaths: ['/root/.local/bin'] }
+  return { mounts: [], extraPaths: ['/root/.local/bin'], extraEnv }
 }

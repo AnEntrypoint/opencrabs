@@ -83,7 +83,7 @@ export function createSystem(id, opts) {
         const { chunks, stackSrc, sharedScripts, workerTools } = await bootAssets()
         const absImagePrefix = new URL(IMAGE_PREFIX, location.href).href
         const _layerResult = await installLayerBinaries(opts.layers || [])
-        const { mounts: _lm, extraPaths } = _layerResult
+        const { mounts: _lm, extraPaths, extraEnv } = _layerResult
         const allChunkUrls = Array.from({ length: chunks }, (_, i) => absImagePrefix + String(i).padStart(2, '0') + '.wasm')
         let pi = 0
         const wasmBuffers = []
@@ -108,6 +108,7 @@ export function createSystem(id, opts) {
         const desktopHandles = mounts.filter(m => m.desktopHandle).map(m => ({vmPath:m.vmPath, handle:m.desktopHandle}))
         let _env = SHELL_ENV
         if (extraPaths && extraPaths.length) _env = _env.map(e => e.startsWith('PATH=') ? 'PATH=' + extraPaths.join(':') + ':' + e.slice(5) : e)
+        if (extraEnv && extraEnv.length) _env = [..._env, ...extraEnv]
         const _cmd = opts.cmd || ['-i']
         worker = new Worker(makeWorkerBlob(_env, [workerTools, ...sharedScripts], _cmd, blobMounts, []))
         worker.onerror = e => console.error('worker error [' + id + ']:', e.message, e.filename + ':' + e.lineno)
